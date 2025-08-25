@@ -1,18 +1,18 @@
 /* Global styles */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-    font-family: 'Arial', sans-serif;
-    background: #000;
-    color: white;
-    overflow: hidden;
+  font-family: "Arial", sans-serif;
+  background: #000;
+  color: white;
+  overflow: hidden;
 }
 
 #globeViz {
-    width: 100vw;
-    height: 100vh;
+  width: 100vw;
+  height: 100vh;
 }

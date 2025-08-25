@@ -2,11 +2,11 @@
 function generateTriangularGrid() {
   const points = [];
   const arcs = [];
-  const gridAltitude = 0.05;
+  const gridAltitude = 0.01;
 
   // Paramètres de la grille
-  const latDivisions = 8; // Nombre de divisions en latitude
-  const lngDivisions = 16; // Nombre de divisions en longitude
+  const latDivisions = 12; // Nombre de divisions en latitude
+  const lngDivisions = 24; // Nombre de divisions en longitude
 
   // Ajouter les pôles
   const northPole = {
@@ -138,20 +138,23 @@ function generateTriangularGrid() {
 const gridData = generateTriangularGrid();
 
 const world = Globe()(document.getElementById("globeViz"))
-  .globeImageUrl("./img/earth-topology.png")
-  .backgroundImageUrl("./img/night-sky.png")
+  .globeImageUrl("./img/earth-water.png")
+  // .backgroundImageUrl("./img/night-sky.png")
+  .backgroundColor("rgba(234, 233, 215, 1)") //
+  .atmosphereColor("#fff") // Couleur du halo atmosphérique
+  .atmosphereAltitude(0.5) // Épaisseur du halo (optionnel)
   .width(window.innerWidth)
   .height(window.innerHeight)
   // Ajouter les points de la grille
   .pointsData(gridData.points)
-  .pointColor(() => "#00ffff")
-  .pointRadius(0.1)
-  .pointAltitude((d) => d.altitude)
-  .pointResolution(6)
+  .pointColor(() => "rgba(234, 233, 215, 1)")
+  .pointRadius(0.4)
+  .pointAltitude(0)
+  .pointResolution(24)
   // Ajouter les arcs de la grille
   .arcsData(gridData.arcs)
-  .arcColor(() => "#00ffff")
+  .arcColor(() => "rgba(234, 233, 215, 1)")
   .arcAltitude((d) => d.altitude)
-  .arcStroke(0.05);
+  .arcStroke(0.15);
 
 world;
