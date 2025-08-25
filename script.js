@@ -1,160 +1,197 @@
-// Fonction pour générer une grille triangulaire simple et régulière
-function generateTriangularGrid() {
-  const points = [];
-  const arcs = [];
-  const gridAltitude = 0.01;
+// Configuration constants
+const GRID_CONFIG = {
+  altitude: 0.08,
+  latDivisions: 12,
+  lngDivisions: 24,
+  tolerance: 0.1,
+};
 
-  // Paramètres de la grille
-  const latDivisions = 12; // Nombre de divisions en latitude
-  const lngDivisions = 24; // Nombre de divisions en longitude
+const VISUAL_CONFIG = {
+  pointColor: "#047857",
+  pointRadius: 0.4,
+  arcStroke: 0.15,
+  backgroundColor: "#f5f5f4",
+  atmosphereColor: "#ecfdf5",
+  atmosphereAltitude: 0.5,
+};
 
-  // Ajouter les pôles
-  const northPole = {
-    lat: 90,
-    lng: 0,
-    id: "north_pole",
-    altitude: gridAltitude,
-  };
-  const southPole = {
-    lat: -90,
-    lng: 0,
-    id: "south_pole",
-    altitude: gridAltitude,
-  };
-
-  points.push(northPole);
-  points.push(southPole);
-
-  // Générer les points de la grille (excluant les pôles)
-  for (let latStep = 1; latStep < latDivisions; latStep++) {
-    const lat = -90 + (latStep * 180) / latDivisions;
-
-    for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
-      const lng = -180 + (lngStep * 360) / lngDivisions;
-
-      points.push({
-        lat: lat,
-        lng: lng,
-        id: `${latStep}_${lngStep}`,
-        altitude: gridAltitude,
-      });
-    }
+// Grid generator class
+class TriangularGridGenerator {
+  constructor(config = GRID_CONFIG) {
+    this.config = config;
+    this.points = [];
+    this.arcs = [];
   }
 
-  // Fonction utilitaire pour trouver un point par coordonnées
-  function findPoint(lat, lng) {
-    return points.find(
-      (p) => Math.abs(p.lat - lat) < 0.1 && Math.abs(p.lng - lng) < 0.1
+  generate() {
+    this.createPoles();
+    this.createGridPoints();
+    this.createLatitudeLines();
+    this.createMeridians();
+    this.createDiagonals();
+
+    return {
+      points: this.points,
+      arcs: this.arcs,
+    };
+  }
+
+  createPoles() {
+    this.points.push(
+      {
+        lat: 90,
+        lng: 0,
+        id: "north_pole",
+        altitude: this.config.altitude,
+      },
+      {
+        lat: -90,
+        lng: 0,
+        id: "south_pole",
+        altitude: this.config.altitude,
+      }
     );
   }
 
-  // Fonction utilitaire pour ajouter un arc
-  function addArc(p1, p2) {
+  createGridPoints() {
+    for (let latStep = 1; latStep < this.config.latDivisions; latStep++) {
+      const lat = -90 + (latStep * 180) / this.config.latDivisions;
+
+      for (let lngStep = 0; lngStep < this.config.lngDivisions; lngStep++) {
+        const lng = -180 + (lngStep * 360) / this.config.lngDivisions;
+
+        this.points.push({
+          lat,
+          lng,
+          id: `${latStep}_${lngStep}`,
+          altitude: this.config.altitude,
+        });
+      }
+    }
+  }
+
+  createLatitudeLines() {
+    for (let latStep = 1; latStep < this.config.latDivisions; latStep++) {
+      const lat = -90 + (latStep * 180) / this.config.latDivisions;
+
+      for (let lngStep = 0; lngStep < this.config.lngDivisions; lngStep++) {
+        const lng1 = -180 + (lngStep * 360) / this.config.lngDivisions;
+        const lng2 =
+          -180 +
+          (((lngStep + 1) % this.config.lngDivisions) * 360) /
+            this.config.lngDivisions;
+
+        const p1 = this.findPoint(lat, lng1);
+        const p2 = this.findPoint(lat, lng2);
+        this.addArc(p1, p2);
+      }
+    }
+  }
+
+  createMeridians() {
+    for (let lngStep = 0; lngStep < this.config.lngDivisions; lngStep++) {
+      const lng = -180 + (lngStep * 360) / this.config.lngDivisions;
+
+      this.connectPoleToMeridian("north", lng);
+      this.connectMeridianPoints(lng);
+      this.connectPoleToMeridian("south", lng);
+    }
+  }
+
+  connectPoleToMeridian(pole, lng) {
+    const polePoint = this.points.find((p) => p.id === `${pole}_pole`);
+
+    if (pole === "north") {
+      const firstPoint = this.findPoint(
+        -90 + ((this.config.latDivisions - 1) * 180) / this.config.latDivisions,
+        lng
+      );
+      this.addArc(polePoint, firstPoint);
+    } else {
+      const lastPoint = this.findPoint(
+        -90 + (1 * 180) / this.config.latDivisions,
+        lng
+      );
+      this.addArc(lastPoint, polePoint);
+    }
+  }
+
+  connectMeridianPoints(lng) {
+    for (let latStep = 1; latStep < this.config.latDivisions - 1; latStep++) {
+      const lat1 = -90 + (latStep * 180) / this.config.latDivisions;
+      const lat2 = -90 + ((latStep + 1) * 180) / this.config.latDivisions;
+
+      const p1 = this.findPoint(lat1, lng);
+      const p2 = this.findPoint(lat2, lng);
+      this.addArc(p1, p2);
+    }
+  }
+
+  createDiagonals() {
+    for (let latStep = 1; latStep < this.config.latDivisions - 1; latStep++) {
+      const lat1 = -90 + (latStep * 180) / this.config.latDivisions;
+      const lat2 = -90 + ((latStep + 1) * 180) / this.config.latDivisions;
+
+      for (let lngStep = 0; lngStep < this.config.lngDivisions; lngStep++) {
+        const lng1 = -180 + (lngStep * 360) / this.config.lngDivisions;
+        const lng2 =
+          -180 +
+          (((lngStep + 1) % this.config.lngDivisions) * 360) /
+            this.config.lngDivisions;
+
+        const p1 = this.findPoint(lat1, lng1);
+        const p2 = this.findPoint(lat2, lng2);
+        const p3 = this.findPoint(lat1, lng2);
+        const p4 = this.findPoint(lat2, lng1);
+
+        this.addArc(p1, p2);
+        this.addArc(p3, p4);
+      }
+    }
+  }
+
+  findPoint(lat, lng) {
+    return this.points.find(
+      (p) =>
+        Math.abs(p.lat - lat) < this.config.tolerance &&
+        Math.abs(p.lng - lng) < this.config.tolerance
+    );
+  }
+
+  addArc(p1, p2) {
     if (p1 && p2) {
-      arcs.push({
+      this.arcs.push({
         startLat: p1.lat,
         startLng: p1.lng,
         endLat: p2.lat,
         endLng: p2.lng,
-        altitude: gridAltitude,
+        altitude: this.config.altitude,
       });
     }
   }
-
-  // 1. CONNEXIONS DES PÔLES AUX MÉRIDIENS SEULEMENT
-
-  // Pas de connexions ici - elles seront faites dans la section méridiens
-
-  // 2. Lignes de latitude (parallèles)
-  for (let latStep = 1; latStep < latDivisions; latStep++) {
-    const lat = -90 + (latStep * 180) / latDivisions;
-
-    for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
-      const lng1 = -180 + (lngStep * 360) / lngDivisions;
-      const lng2 = -180 + (((lngStep + 1) % lngDivisions) * 360) / lngDivisions;
-
-      const p1 = findPoint(lat, lng1);
-      const p2 = findPoint(lat, lng2);
-
-      addArc(p1, p2);
-    }
-  }
-
-  // 3. Lignes de longitude (méridiens) AVEC connexions aux pôles
-  for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
-    const lng = -180 + (lngStep * 360) / lngDivisions;
-
-    // Connecter le pôle nord au premier point du méridien (latitude la plus haute)
-    const firstPoint = findPoint(
-      -90 + ((latDivisions - 1) * 180) / latDivisions,
-      lng
-    );
-    if (firstPoint) {
-      addArc(northPole, firstPoint);
-    }
-
-    // Connecter les points entre eux le long du méridien
-    for (let latStep = 1; latStep < latDivisions - 1; latStep++) {
-      const lat1 = -90 + (latStep * 180) / latDivisions;
-      const lat2 = -90 + ((latStep + 1) * 180) / latDivisions;
-
-      const p1 = findPoint(lat1, lng);
-      const p2 = findPoint(lat2, lng);
-
-      addArc(p1, p2);
-    }
-
-    // Connecter le dernier point du méridien au pôle sud (latitude la plus basse)
-    const lastPoint = findPoint(-90 + (1 * 180) / latDivisions, lng);
-    if (lastPoint) {
-      addArc(lastPoint, southPole);
-    }
-  }
-
-  // 4. Lignes diagonales pour former les triangles dans le corps de la grille
-  for (let latStep = 1; latStep < latDivisions - 1; latStep++) {
-    const lat1 = -90 + (latStep * 180) / latDivisions;
-    const lat2 = -90 + ((latStep + 1) * 180) / latDivisions;
-
-    for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
-      const lng1 = -180 + (lngStep * 360) / lngDivisions;
-      const lng2 = -180 + (((lngStep + 1) % lngDivisions) * 360) / lngDivisions;
-
-      // Diagonales pour créer les triangles
-      const p1 = findPoint(lat1, lng1);
-      const p2 = findPoint(lat2, lng2);
-      const p3 = findPoint(lat1, lng2);
-      const p4 = findPoint(lat2, lng1);
-
-      addArc(p1, p2); // Diagonale 1
-      addArc(p3, p4); // Diagonale 2
-    }
-  }
-
-  return { points, arcs };
 }
 
-// Générer les données de la grille
-const gridData = generateTriangularGrid();
+// Globe setup function
+function createGlobe(gridData) {
+  return Globe()(document.getElementById("globeViz"))
+    .globeImageUrl("./img/earth-water.png")
+    .backgroundColor(VISUAL_CONFIG.backgroundColor)
+    .atmosphereColor(VISUAL_CONFIG.atmosphereColor)
+    .atmosphereAltitude(VISUAL_CONFIG.atmosphereAltitude)
+    .width(window.innerWidth)
+    .height(window.innerHeight)
+    .pointsData(gridData.points)
+    .pointColor(() => VISUAL_CONFIG.pointColor)
+    .pointRadius(VISUAL_CONFIG.pointRadius)
+    .pointAltitude(0)
+    .pointResolution(24)
+    .arcsData(gridData.arcs)
+    .arcColor(() => VISUAL_CONFIG.pointColor)
+    .arcAltitude((d) => d.altitude)
+    .arcStroke(VISUAL_CONFIG.arcStroke);
+}
 
-const world = Globe()(document.getElementById("globeViz"))
-  .globeImageUrl("./img/earth-water.png")
-  // .backgroundImageUrl("./img/night-sky.png")
-  .backgroundColor("rgba(234, 233, 215, 1)") //
-  .atmosphereColor("#fff") // Couleur du halo atmosphérique
-  .atmosphereAltitude(0.5) // Épaisseur du halo (optionnel)
-  .width(window.innerWidth)
-  .height(window.innerHeight)
-  // Ajouter les points de la grille
-  .pointsData(gridData.points)
-  .pointColor(() => "rgba(234, 233, 215, 1)")
-  .pointRadius(0.4)
-  .pointAltitude(0)
-  .pointResolution(24)
-  // Ajouter les arcs de la grille
-  .arcsData(gridData.arcs)
-  .arcColor(() => "rgba(234, 233, 215, 1)")
-  .arcAltitude((d) => d.altitude)
-  .arcStroke(0.15);
-
-world;
+// Main execution
+const gridGenerator = new TriangularGridGenerator();
+const gridData = gridGenerator.generate();
+const world = createGlobe(gridData);
