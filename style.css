@@ -7,26 +7,12 @@
 
 body {
     font-family: 'Arial', sans-serif;
-    background: radial-gradient(circle at center, #001122 0%, #000814 100%);
+    background: #000;
     color: white;
     overflow: hidden;
-    cursor: grab;
 }
 
-body:active {
-    cursor: grabbing;
-}
-
-#container {
+#globeViz {
     width: 100vw;
     height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* Canvas styling */
-canvas {
-    display: block;
-    outline: none; /* Remove focus outline */
 }
