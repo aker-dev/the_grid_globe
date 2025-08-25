@@ -9,19 +9,21 @@ function generateTriangularGrid() {
   const lngDivisions = 16; // Nombre de divisions en longitude
 
   // Ajouter les pôles
-  points.push({
+  const northPole = {
     lat: 90,
     lng: 0,
     id: "north_pole",
     altitude: gridAltitude,
-  });
-
-  points.push({
+  };
+  const southPole = {
     lat: -90,
     lng: 0,
     id: "south_pole",
     altitude: gridAltitude,
-  });
+  };
+
+  points.push(northPole);
+  points.push(southPole);
 
   // Générer les points de la grille (excluant les pôles)
   for (let latStep = 1; latStep < latDivisions; latStep++) {
@@ -59,7 +61,11 @@ function generateTriangularGrid() {
     }
   }
 
-  // 1. Lignes de latitude (parallèles)
+  // 1. CONNEXIONS DES PÔLES AUX MÉRIDIENS SEULEMENT
+
+  // Pas de connexions ici - elles seront faites dans la section méridiens
+
+  // 2. Lignes de latitude (parallèles)
   for (let latStep = 1; latStep < latDivisions; latStep++) {
     const lat = -90 + (latStep * 180) / latDivisions;
 
@@ -74,29 +80,15 @@ function generateTriangularGrid() {
     }
   }
 
-  // 2. Connexions des pôles à TOUS les points de leur latitude adjacente
-  const northPole = points.find((p) => p.id === "north_pole");
-  const southPole = points.find((p) => p.id === "south_pole");
-
-  // Connecter le pôle nord à TOUS les points de la première latitude
-  const firstLatitude = -90 + 180 / latDivisions;
+  // 3. Lignes de longitude (méridiens) AVEC connexions aux pôles
   for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
     const lng = -180 + (lngStep * 360) / lngDivisions;
-    const firstPoint = findPoint(firstLatitude, lng);
-    addArc(northPole, firstPoint);
-  }
 
-  // Connecter le pôle sud à TOUS les points de la dernière latitude
-  const lastLatitude = -90 + ((latDivisions - 1) * 180) / latDivisions;
-  for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
-    const lng = -180 + (lngStep * 360) / lngDivisions;
-    const lastPoint = findPoint(lastLatitude, lng);
-    addArc(lastPoint, southPole);
-  }
-
-  // 3. Lignes de longitude (méridiens) dans le corps de la grille
-  for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
-    const lng = -180 + (lngStep * 360) / lngDivisions;
+    // Connecter le pôle nord au premier point du méridien (latitude la plus haute)
+    const firstPoint = findPoint(-90 + ((latDivisions - 1) * 180) / latDivisions, lng);
+    if (firstPoint) {
+      addArc(northPole, firstPoint);
+    }
 
     // Connecter les points entre eux le long du méridien
     for (let latStep = 1; latStep < latDivisions - 1; latStep++) {
@@ -107,6 +99,12 @@ function generateTriangularGrid() {
       const p2 = findPoint(lat2, lng);
 
       addArc(p1, p2);
+    }
+
+    // Connecter le dernier point du méridien au pôle sud (latitude la plus basse)
+    const lastPoint = findPoint(-90 + (1 * 180) / latDivisions, lng);
+    if (lastPoint) {
+      addArc(lastPoint, southPole);
     }
   }
 
