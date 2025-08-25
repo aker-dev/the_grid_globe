@@ -1,13 +1,14 @@
-// Fonction pour générer une grille triangulaire géodésique complète
+// Fonction pour générer une grille triangulaire simple et régulière
 function generateTriangularGrid() {
   const points = [];
   const arcs = [];
+  const gridAltitude = 0.05;
 
   // Paramètres de la grille
-  const divisions = 20; // Augmenté pour une grille plus dense
-  const gridAltitude = 0.05; // Altitude de la grille au-dessus du globe
+  const latDivisions = 8; // Nombre de divisions en latitude
+  const lngDivisions = 16; // Nombre de divisions en longitude
 
-  // Ajouter les pôles nord et sud
+  // Ajouter les pôles
   points.push({
     lat: 90,
     lng: 0,
@@ -22,82 +23,110 @@ function generateTriangularGrid() {
     altitude: gridAltitude,
   });
 
-  // Générer les cercles de latitude (excluant les pôles)
-  for (let latStep = 1; latStep < divisions; latStep++) {
-    const lat = -90 + (latStep * 180) / divisions;
-    const numLongPoints = Math.max(
-      6,
-      Math.round(Math.sin((latStep * Math.PI) / divisions) * divisions * 2)
-    );
+  // Générer les points de la grille (excluant les pôles)
+  for (let latStep = 1; latStep < latDivisions; latStep++) {
+    const lat = -90 + (latStep * 180) / latDivisions;
 
-    for (let i = 0; i < numLongPoints; i++) {
-      const lng = (i / numLongPoints) * 360 - 180;
+    for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
+      const lng = -180 + (lngStep * 360) / lngDivisions;
+
       points.push({
         lat: lat,
         lng: lng,
-        id: `${lat}_${lng}`,
+        id: `${latStep}_${lngStep}`,
         altitude: gridAltitude,
       });
     }
   }
 
-  // Fonction pour trouver les points les plus proches
-  function findNearestPoints(point, allPoints, maxDistance = 25) {
-    return allPoints.filter((otherPoint) => {
-      if (point.id === otherPoint.id) return false;
-
-      const latDiff = point.lat - otherPoint.lat;
-      const lngDiff = point.lng - otherPoint.lng;
-
-      // Gérer le wraparound de longitude
-      const adjustedLngDiff = Math.min(
-        Math.abs(lngDiff),
-        360 - Math.abs(lngDiff)
-      );
-
-      const distance = Math.sqrt(
-        latDiff * latDiff + adjustedLngDiff * adjustedLngDiff
-      );
-      return distance <= maxDistance;
-    });
+  // Fonction utilitaire pour trouver un point par coordonnées
+  function findPoint(lat, lng) {
+    return points.find(
+      (p) => Math.abs(p.lat - lat) < 0.1 && Math.abs(p.lng - lng) < 0.1
+    );
   }
 
-  // Générer les connexions pour former la grille
-  points.forEach((point) => {
-    const nearbyPoints = findNearestPoints(point, points, 20);
-
-    // Connecter aux points les plus proches pour former une grille triangulaire
-    nearbyPoints.forEach((nearPoint) => {
-      // Éviter les doublons en utilisant un tri consistant
-      if (point.id < nearPoint.id) {
-        arcs.push({
-          startLat: point.lat,
-          startLng: point.lng,
-          endLat: nearPoint.lat,
-          endLng: nearPoint.lng,
-          altitude: gridAltitude,
-        });
-      }
-    });
-  });
-
-  // Ajouter des connexions méridiennes (lignes nord-sud)
-  for (let lng = -180; lng < 180; lng += 360 / divisions) {
-    const meridianPoints = points
-      .filter(
-        (p) =>
-          Math.abs(p.lng - lng) < 5 || Math.abs(Math.abs(p.lng - lng) - 360) < 5
-      )
-      .sort((a, b) => b.lat - a.lat);
-
-    for (let i = 0; i < meridianPoints.length - 1; i++) {
+  // Fonction utilitaire pour ajouter un arc
+  function addArc(p1, p2) {
+    if (p1 && p2) {
       arcs.push({
-        startLat: meridianPoints[i].lat,
-        startLng: meridianPoints[i].lng,
-        endLat: meridianPoints[i + 1].lat,
-        endLng: meridianPoints[i + 1].lng,
+        startLat: p1.lat,
+        startLng: p1.lng,
+        endLat: p2.lat,
+        endLng: p2.lng,
         altitude: gridAltitude,
       });
+    }
+  }
+
+  // 1. Lignes de latitude (parallèles)
+  for (let latStep = 1; latStep < latDivisions; latStep++) {
+    const lat = -90 + (latStep * 180) / latDivisions;
+
+    for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
+      const lng1 = -180 + (lngStep * 360) / lngDivisions;
+      const lng2 = -180 + (((lngStep + 1) % lngDivisions) * 360) / lngDivisions;
+
+      const p1 = findPoint(lat, lng1);
+      const p2 = findPoint(lat, lng2);
+
+      addArc(p1, p2);
+    }
+  }
+
+  // 2. Connexions des pôles à TOUS les points de leur latitude adjacente
+  const northPole = points.find((p) => p.id === "north_pole");
+  const southPole = points.find((p) => p.id === "south_pole");
+
+  // Connecter le pôle nord à TOUS les points de la première latitude
+  const firstLatitude = -90 + 180 / latDivisions;
+  for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
+    const lng = -180 + (lngStep * 360) / lngDivisions;
+    const firstPoint = findPoint(firstLatitude, lng);
+    addArc(northPole, firstPoint);
+  }
+
+  // Connecter le pôle sud à TOUS les points de la dernière latitude
+  const lastLatitude = -90 + ((latDivisions - 1) * 180) / latDivisions;
+  for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
+    const lng = -180 + (lngStep * 360) / lngDivisions;
+    const lastPoint = findPoint(lastLatitude, lng);
+    addArc(lastPoint, southPole);
+  }
+
+  // 3. Lignes de longitude (méridiens) dans le corps de la grille
+  for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
+    const lng = -180 + (lngStep * 360) / lngDivisions;
+
+    // Connecter les points entre eux le long du méridien
+    for (let latStep = 1; latStep < latDivisions - 1; latStep++) {
+      const lat1 = -90 + (latStep * 180) / latDivisions;
+      const lat2 = -90 + ((latStep + 1) * 180) / latDivisions;
+
+      const p1 = findPoint(lat1, lng);
+      const p2 = findPoint(lat2, lng);
+
+      addArc(p1, p2);
+    }
+  }
+
+  // 4. Lignes diagonales pour former les triangles dans le corps de la grille
+  for (let latStep = 1; latStep < latDivisions - 1; latStep++) {
+    const lat1 = -90 + (latStep * 180) / latDivisions;
+    const lat2 = -90 + ((latStep + 1) * 180) / latDivisions;
+
+    for (let lngStep = 0; lngStep < lngDivisions; lngStep++) {
+      const lng1 = -180 + (lngStep * 360) / lngDivisions;
+      const lng2 = -180 + (((lngStep + 1) % lngDivisions) * 360) / lngDivisions;
+
+      // Diagonales pour créer les triangles
+      const p1 = findPoint(lat1, lng1);
+      const p2 = findPoint(lat2, lng2);
+      const p3 = findPoint(lat1, lng2);
+      const p4 = findPoint(lat2, lng1);
+
+      addArc(p1, p2); // Diagonale 1
+      addArc(p3, p4); // Diagonale 2
     }
   }
 
@@ -122,9 +151,6 @@ const world = Globe()(document.getElementById("globeViz"))
   .arcsData(gridData.arcs)
   .arcColor(() => "#00ffff")
   .arcAltitude((d) => d.altitude)
-  .arcStroke(0.05)
-  .arcDashLength(0.1)
-  .arcDashGap(0.05)
-  .arcDashAnimateTime(2000);
+  .arcStroke(0.05);
 
 world;
