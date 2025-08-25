@@ -1,17 +1,17 @@
 // Configuration constants
 const GRID_CONFIG = {
-  altitude: 0.08,
-  latDivisions: 12,
-  lngDivisions: 24,
+  altitude: 0.04,
+  latDivisions: 8,
+  lngDivisions: 16,
   tolerance: 0.1,
 };
 
 const VISUAL_CONFIG = {
-  pointColor: "#047857",
+  pointColor: "#404040",
   pointRadius: 0.4,
-  arcStroke: 0.15,
+  arcStroke: 0.2,
   backgroundColor: "#f5f5f4",
-  atmosphereColor: "#ecfdf5",
+  atmosphereColor: "#d4d4d4",
   atmosphereAltitude: 0.5,
 };
 
@@ -174,7 +174,7 @@ class TriangularGridGenerator {
 // Globe setup function
 function createGlobe(gridData) {
   return Globe()(document.getElementById("globeViz"))
-    .globeImageUrl("./img/earth-water.png")
+    .globeImageUrl("./img/earth-light.jpg")
     .backgroundColor(VISUAL_CONFIG.backgroundColor)
     .atmosphereColor(VISUAL_CONFIG.atmosphereColor)
     .atmosphereAltitude(VISUAL_CONFIG.atmosphereAltitude)
@@ -187,6 +187,7 @@ function createGlobe(gridData) {
     .pointResolution(24)
     .arcsData(gridData.arcs)
     .arcColor(() => VISUAL_CONFIG.pointColor)
+
     .arcAltitude((d) => d.altitude)
     .arcStroke(VISUAL_CONFIG.arcStroke);
 }
