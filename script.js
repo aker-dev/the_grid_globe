@@ -85,7 +85,10 @@ function generateTriangularGrid() {
     const lng = -180 + (lngStep * 360) / lngDivisions;
 
     // Connecter le pôle nord au premier point du méridien (latitude la plus haute)
-    const firstPoint = findPoint(-90 + ((latDivisions - 1) * 180) / latDivisions, lng);
+    const firstPoint = findPoint(
+      -90 + ((latDivisions - 1) * 180) / latDivisions,
+      lng
+    );
     if (firstPoint) {
       addArc(northPole, firstPoint);
     }
