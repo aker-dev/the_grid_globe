@@ -49,6 +49,15 @@ const ZOOM_CONFIG = {
   maxDistance: 1000, // Maximum zoom (further)
   breathingAmplitude: 0.5, // Breathing animation amplitude (80% variation)
   transitionDuration: 1000, // Transition duration between zoom levels (ms)
+  // Pre-breathing countdown configuration
+  preBreathingCountdown: {
+    stepDuration: 2000, // 2 seconds per step (in milliseconds)
+    steps: [
+      { number: "3…", text: "Sit in a comfortable position" },
+      { number: "2…", text: "Try to be not disturbed" },
+      { number: "1…", text: "And breathe" }
+    ]
+  },
   // Breathing timing in seconds
   breathingTiming: {
     inspire: 4, // Inspiration in seconds
@@ -505,9 +514,65 @@ let isBreathingMode = false;
 let breathingAnimationId = null;
 let zoomTransitionId = null;
 let originalCountdownContent = null;
+let preBreathingCountdownId = null;
 
 function easeInOutQuad(t) {
   return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+}
+
+function startPreBreathingCountdown(onComplete) {
+  if (preBreathingCountdownId) {
+    clearTimeout(preBreathingCountdownId);
+  }
+
+  const countdownSteps = ZOOM_CONFIG.preBreathingCountdown.steps;
+  const stepDuration = ZOOM_CONFIG.preBreathingCountdown.stepDuration;
+  
+  let currentStep = 0;
+
+  // Get header elements
+  const h1Element = document.querySelector("h1");
+  const h2Element = document.querySelector("h2");
+  
+  // Save original content
+  let originalH1Content = null;
+  let originalH2Content = null;
+  
+  if (h1Element && originalH1Content === null) {
+    originalH1Content = h1Element.textContent;
+  }
+  if (h2Element && originalH2Content === null) {
+    originalH2Content = h2Element.textContent;
+  }
+
+  function showNextStep() {
+    if (currentStep >= countdownSteps.length) {
+      // Countdown finished, start breathing animation
+      if (onComplete) onComplete();
+      return;
+    }
+
+    const step = countdownSteps[currentStep];
+    
+    // Update header elements with countdown content
+    if (h1Element) {
+      h1Element.textContent = step.number;
+    }
+    
+    if (h2Element) {
+      h2Element.textContent = step.text;
+    }
+
+    currentStep++;
+    preBreathingCountdownId = setTimeout(showNextStep, stepDuration);
+  }
+
+  // Store original content for restoration
+  window.originalH1Content = originalH1Content;
+  window.originalH2Content = originalH2Content;
+
+  // Start the countdown
+  showNextStep();
 }
 
 function animateZoomTransition(fromDistance, toDistance, duration, onComplete) {
@@ -648,6 +713,24 @@ function stopBreathingAnimation() {
     breathingAnimationId = null;
   }
 
+  // Stop countdown if it's running
+  if (preBreathingCountdownId) {
+    clearTimeout(preBreathingCountdownId);
+    preBreathingCountdownId = null;
+  }
+
+  // Restore original header content
+  const h1Element = document.querySelector("h1");
+  const h2Element = document.querySelector("h2");
+  
+  if (h1Element && window.originalH1Content) {
+    h1Element.textContent = window.originalH1Content;
+  }
+  
+  if (h2Element && window.originalH2Content) {
+    h2Element.textContent = window.originalH2Content;
+  }
+
   // Restore manifestation header text when breathing stops
   const manifestationHeader = document.getElementById("manifestation-header");
   if (manifestationHeader) {
@@ -693,13 +776,16 @@ function toggleGlobeMode() {
     isBreathingMode = true;
     controls.autoRotate = false;
 
-    // Smooth transition to maximum distance then start breathing
+    // Smooth transition to maximum distance then start countdown before breathing
     animateZoomTransition(
       currentDistance,
       ZOOM_CONFIG.maxDistance,
       ZOOM_CONFIG.transitionDuration,
       () => {
-        startBreathingAnimation();
+        // Start the pre-breathing countdown, then breathing animation
+        startPreBreathingCountdown(() => {
+          startBreathingAnimation();
+        });
       }
     );
   }
