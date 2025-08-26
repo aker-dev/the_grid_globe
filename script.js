@@ -10,45 +10,45 @@ const VISUAL_CONFIG = {
   pointColor: "#F8ED43",
   pointRadius: 0.2,
   arcStroke: 0.1,
-  arcDashLength: 0.05, // Longueur des segments pointillés
-  arcDashGap: 0.02, // Espacement entre les segments
+  arcDashLength: 0.05, // Length of dashed segments
+  arcDashGap: 0.02, // Spacing between segments
   backgroundColor: "#A1A39A",
   atmosphereColor: "#F8ED43",
   atmosphereAltitude: 0.5,
 };
 
-// Configuration pour la géolocalisation de l'utilisateur
+// Configuration for user geolocation
 const USER_LOCATION_CONFIG = {
-  color: "#F8ED43", // Rouge
+  color: "#F8ED43", // Yellow
   radius: 0.8,
   altitude: 0.05,
 };
 
-// Configuration pour les autres utilisateurs en ligne (utilisant le système de particules)
+// Configuration for other online users (using particle system)
 const OTHER_USERS_CONFIG = {
-  color: "#F8ED43", // Bleu
-  size: 1, // Taille pour le système de particules
+  color: "#F8ED43", // Yellow
+  size: 1, // Size for particle system
   altitude: 0.025,
   numberOfUsers: 10000,
 };
 
-// Configuration pour les niveaux de zoom et respiration
+// Configuration for zoom levels and breathing
 const ZOOM_CONFIG = {
-  initialDistance: 400, // Distance initiale de la caméra
-  minDistance: 200, // Zoom minimum (plus proche)
-  maxDistance: 1000, // Zoom maximum (plus loin)
-  breathingAmplitude: 0.5, // Amplitude de l'animation de respiration (80% de variation)
-  transitionDuration: 1000, // Durée de transition entre les niveaux de zoom (ms)
-  // Temps de respiration en secondes
+  initialDistance: 400, // Initial camera distance
+  minDistance: 200, // Minimum zoom (closer)
+  maxDistance: 1000, // Maximum zoom (further)
+  breathingAmplitude: 0.5, // Breathing animation amplitude (80% variation)
+  transitionDuration: 1000, // Transition duration between zoom levels (ms)
+  // Breathing timing in seconds
   breathingTiming: {
-    inspire: 3, // Inspiration en secondes
-    pause: 2, // Pause/rétention en secondes
-    expire: 3, // Expiration en secondes
+    inspire: 3, // Inspiration in seconds
+    pause: 2, // Pause/retention in seconds
+    expire: 3, // Expiration in seconds
   },
-  pauseMicroAmplitude: 0.005, // Mini amplitude pour l'animation pendant la pause (2% de variation)
+  pauseMicroAmplitude: 0.005, // Mini amplitude for pause animation (2% variation)
 };
 
-// Classe pour générer des utilisateurs simulés dans les zones peuplées
+// Class to generate simulated users in populated areas
 class PopulatedUsersGenerator {
   constructor(config = OTHER_USERS_CONFIG) {
     this.config = config;
@@ -60,28 +60,28 @@ class PopulatedUsersGenerator {
       const response = await fetch("./data/populated_areas.geojson");
       const data = await response.json();
       this.populatedAreas = data.features;
-      console.log(`🌍 ${this.populatedAreas.length} zones peuplées chargées`);
+      console.log(`🌍 ${this.populatedAreas.length} populated areas loaded`);
     } catch (error) {
-      console.error("Erreur lors du chargement des zones peuplées:", error);
-      // Fallback vers la génération aléatoire
+      console.error("Error loading populated areas:", error);
+      // Fallback to random generation
       this.populatedAreas = null;
     }
   }
 
   async generate() {
-    // Charger les zones peuplées si pas encore fait
+    // Load populated areas if not already done
     if (!this.populatedAreas) {
       await this.loadPopulatedAreas();
     }
 
     const users = [];
 
-    // Si on n'a pas pu charger les données, utiliser la méthode aléatoire
+    // If data couldn't be loaded, use random method
     if (!this.populatedAreas) {
       return this.generateRandomUsers();
     }
 
-    // Générer des utilisateurs dans les zones peuplées selon leur poids
+    // Generate users in populated areas according to their weight
     for (let i = 0; i < this.config.numberOfUsers; i++) {
       const coordinates = this.generateCoordinatesInPopulatedArea();
 
@@ -94,21 +94,21 @@ class PopulatedUsersGenerator {
     }
 
     console.log(
-      `👥 ${users.length} utilisateurs simulés générés dans les zones peuplées`
+      `👥 ${users.length} simulated users generated in populated areas`
     );
     return users;
   }
 
   generateCoordinatesInPopulatedArea() {
-    // Sélectionner une zone selon son poids de population
+    // Select an area according to its population weight
     const area = this.selectWeightedArea();
 
-    // Générer un point aléatoire dans cette zone, évitant les bordures
+    // Generate a random point in this area, avoiding borders
     return this.generatePointInPolygonCenter(area.geometry.coordinates[0]);
   }
 
   selectWeightedArea() {
-    // Créer un tableau avec répétition selon le poids
+    // Create array with repetition according to weight
     const weightedAreas = [];
     this.populatedAreas.forEach((area) => {
       const weight = Math.round(area.properties.weight * 100);
@@ -117,24 +117,24 @@ class PopulatedUsersGenerator {
       }
     });
 
-    // Sélection aléatoire pondérée
+    // Weighted random selection
     return weightedAreas[Math.floor(Math.random() * weightedAreas.length)];
   }
 
   generatePointInPolygonCenter(coordinates) {
-    // Trouver le centre géographique du polygone
+    // Find the geographic center of the polygon
     const lats = coordinates.map((coord) => coord[1]);
     const lngs = coordinates.map((coord) => coord[0]);
 
     const centerLat = lats.reduce((sum, lat) => sum + lat, 0) / lats.length;
     const centerLng = lngs.reduce((sum, lng) => sum + lng, 0) / lngs.length;
 
-    // Calculer la taille de la zone pour déterminer le rayon maximum
+    // Calculate area size to determine maximum radius
     const latRange = Math.max(...lats) - Math.min(...lats);
     const lngRange = Math.max(...lngs) - Math.min(...lngs);
-    const maxRadius = Math.min(latRange, lngRange) * 0.4; // 40% de la taille de la zone
+    const maxRadius = Math.min(latRange, lngRange) * 0.4; // 40% of area size
 
-    // Générer un point avec distribution radiale depuis le centre
+    // Generate point with radial distribution from center
     const { lat, lng } = this.generateRadialPoint(
       centerLat,
       centerLng,
@@ -144,47 +144,47 @@ class PopulatedUsersGenerator {
     return { lat, lng };
   }
 
-  // Distribution gaussienne pour concentrer les points vers le centre des zones
+  // Gaussian distribution to concentrate points towards area centers
   gaussianRandom(min, max, concentration = 0.3) {
     const center = (min + max) / 2;
     const range = max - min;
 
-    // Box-Muller transform pour distribution gaussienne
+    // Box-Muller transform for gaussian distribution
     const u1 = Math.random();
     const u2 = Math.random();
     const gaussian = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 
-    // Appliquer la concentration et les limites
+    // Apply concentration and limits
     const value = center + gaussian * range * concentration;
     return Math.max(min, Math.min(max, value));
   }
 
-  // Nouvelle méthode pour distribution radiale depuis un centre
+  // New method for radial distribution from a center
   generateRadialPoint(centerLat, centerLng, maxRadius) {
-    // Mélange de distribution radiale et de bruit aléatoire pour plus de naturel
-    const useRadial = Math.random() < 0.7; // 70% radial, 30% aléatoire
+    // Mix of radial distribution and random noise for more natural look
+    const useRadial = Math.random() < 0.7; // 70% radial, 30% random
 
     if (useRadial) {
-      // Distribution radiale avec variation d'angle
+      // Radial distribution with angle variation
       const baseAngle = Math.random() * 2 * Math.PI;
-      const angleVariation = (Math.random() - 0.5) * Math.PI * 0.3; // ±27° de variation
+      const angleVariation = (Math.random() - 0.5) * Math.PI * 0.3; // ±27° variation
       const angle = baseAngle + angleVariation;
 
-      // Rayon avec plus de variation et moins de concentration stricte
+      // Radius with more variation and less strict concentration
       const radiusRandom1 = Math.random();
       const radiusRandom2 = Math.random();
-      // Moyenne de deux valeurs aléatoires pour une distribution plus douce
+      // Average of two random values for smoother distribution
       const normalizedRadius = (radiusRandom1 + radiusRandom2) / 2;
-      const radiusVariation = 1 + (Math.random() - 0.5) * 0.4; // ±20% de variation
+      const radiusVariation = 1 + (Math.random() - 0.5) * 0.4; // ±20% variation
       const radius = normalizedRadius * maxRadius * radiusVariation;
 
-      // Conversion en coordonnées avec du bruit additionnel
+      // Convert to coordinates with additional noise
       const deltaLat =
         radius * Math.cos(angle) + (Math.random() - 0.5) * maxRadius * 0.1;
       const deltaLng =
         radius * Math.sin(angle) + (Math.random() - 0.5) * maxRadius * 0.1;
 
-      // Ajustement pour la projection sphérique
+      // Adjustment for spherical projection
       const correctedDeltaLng =
         deltaLng / Math.cos((centerLat * Math.PI) / 180);
 
@@ -193,7 +193,7 @@ class PopulatedUsersGenerator {
         lng: centerLng + correctedDeltaLng,
       };
     } else {
-      // Distribution complètement aléatoire dans un carré autour du centre
+      // Completely random distribution in a square around center
       const randomLat = centerLat + (Math.random() - 0.5) * maxRadius * 2;
       const randomLng = centerLng + (Math.random() - 0.5) * maxRadius * 2;
 
@@ -204,19 +204,19 @@ class PopulatedUsersGenerator {
     }
   }
 
-  // Nouvelle méthode pour distribution gaussienne autour d'un point central
+  // New method for gaussian distribution around a central point
   gaussianRandomAroundPoint(center, diffusionRadius) {
-    // Box-Muller transform pour distribution gaussienne
+    // Box-Muller transform for gaussian distribution
     const u1 = Math.random();
     const u2 = Math.random();
     const gaussian = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 
-    // Appliquer une diffusion très concentrée autour du centre pour éviter les bordures
-    const offset = gaussian * diffusionRadius * 0.5; // Concentration élevée (0.5 au lieu de 0.3)
+    // Apply very concentrated diffusion around center to avoid borders
+    const offset = gaussian * diffusionRadius * 0.5; // High concentration (0.5 instead of 0.3)
     return center + offset;
   }
 
-  // Méthode de fallback si les données géographiques ne se chargent pas
+  // Fallback method if geographic data fails to load
   generateRandomUsers() {
     const users = [];
     for (let i = 0; i < this.config.numberOfUsers; i++) {
@@ -231,7 +231,7 @@ class PopulatedUsersGenerator {
       });
     }
     console.log(
-      `👥 ${users.length} utilisateurs simulés générés aléatoirement (fallback)`
+      `👥 ${users.length} simulated users generated randomly (fallback)`
     );
     return users;
   }
@@ -393,19 +393,19 @@ class TriangularGridGenerator {
   }
 }
 
-// Variables globales pour la gestion de l'animation
+// Global variables for animation management
 let globeInstance = null;
 let isBreathingMode = false;
 let breathingAnimationId = null;
 let zoomTransitionId = null;
 let originalCountdownContent = null;
 
-// Fonction d'easing pour l'animation de respiration
+// Easing function for breathing animation
 function easeInOutQuad(t) {
   return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 }
 
-// Fonction pour animer une transition de zoom fluide
+// Function to animate smooth zoom transition
 function animateZoomTransition(fromDistance, toDistance, duration, onComplete) {
   if (!globeInstance) return;
 
@@ -420,12 +420,12 @@ function animateZoomTransition(fromDistance, toDistance, duration, onComplete) {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
 
-    // Utiliser easing pour une transition fluide
+    // Use easing for smooth transition
     const easedProgress = easeInOutQuad(progress);
     const currentDistance =
       fromDistance + (toDistance - fromDistance) * easedProgress;
 
-    // Appliquer la nouvelle distance
+    // Apply new distance
     const direction = controls.object.position.clone().normalize();
     controls.object.position.copy(direction.multiplyScalar(currentDistance));
     controls.update();
@@ -441,25 +441,25 @@ function animateZoomTransition(fromDistance, toDistance, duration, onComplete) {
   zoomTransitionId = requestAnimationFrame(animateZoom);
 }
 
-// Animation de respiration cohérence cardiaque (4-2-6 secondes)
+// Heart coherence breathing animation (4-2-6 seconds)
 function startBreathingAnimation() {
   if (!globeInstance || breathingAnimationId) return;
 
   const controls = globeInstance.controls();
-  // Utiliser maxDistance comme base pour l'animation de respiration
+  // Use maxDistance as base for breathing animation
   const baseDistance = ZOOM_CONFIG.maxDistance;
   const breathAmplitude = baseDistance * ZOOM_CONFIG.breathingAmplitude;
 
   let startTime = performance.now();
 
-  // Calculer les durées en millisecondes depuis la configuration
+  // Calculate durations in milliseconds from configuration
   const inspireDuration = ZOOM_CONFIG.breathingTiming.inspire * 1000;
   const pauseDuration = ZOOM_CONFIG.breathingTiming.pause * 1000;
   const expireDuration = ZOOM_CONFIG.breathingTiming.expire * 1000;
   const cycleDuration = inspireDuration + pauseDuration + expireDuration;
 
   console.log(
-    `🫁 Cycle de respiration: ${ZOOM_CONFIG.breathingTiming.inspire}s-${
+    `🫁 Breathing cycle: ${ZOOM_CONFIG.breathingTiming.inspire}s-${
       ZOOM_CONFIG.breathingTiming.pause
     }s-${ZOOM_CONFIG.breathingTiming.expire}s (amplitude: ${
       ZOOM_CONFIG.breathingAmplitude * 100
@@ -472,36 +472,36 @@ function startBreathingAnimation() {
     const elapsed = (currentTime - startTime) % cycleDuration;
     let progress = 0;
 
-    // Déterminer la phase actuelle et mettre à jour l'affichage
-    let currentPhase = '';
-    
+    // Determine current phase and update display
+    let currentPhase = "";
+
     if (elapsed <= inspireDuration) {
-      // Phase d'inspiration - se rapprocher
+      // Inspiration phase - get closer
       progress = easeInOutQuad(elapsed / inspireDuration);
-      currentPhase = 'INHALE';
+      currentPhase = "INHALE";
     } else if (elapsed <= inspireDuration + pauseDuration) {
-      // Phase de rétention avec mini animation
+      // Retention phase with mini animation
       const pauseElapsed = elapsed - inspireDuration;
       const pauseProgress = pauseElapsed / pauseDuration;
 
-      // Mini oscillation pendant la pause (cycle rapide de 0.5 seconde)
-      const microCycle = (pauseElapsed % 500) / 500; // Cycle de 0.5s
+      // Mini oscillation during pause (fast 0.5 second cycle)
+      const microCycle = (pauseElapsed % 500) / 500; // 0.5s cycle
       const microVariation =
         Math.sin(microCycle * Math.PI * 2) * ZOOM_CONFIG.pauseMicroAmplitude;
 
       progress = 1 + microVariation;
-      currentPhase = 'PAUSE';
+      currentPhase = "PAUSE";
     } else {
-      // Phase d'expiration - s'éloigner
+      // Expiration phase - move away
       const expireElapsed = elapsed - inspireDuration - pauseDuration;
       progress = 1 - easeInOutQuad(expireElapsed / expireDuration);
-      currentPhase = 'EXHALE';
+      currentPhase = "EXHALE";
     }
-    
-    // Mettre à jour l'affichage de la phase de respiration
+
+    // Update breathing phase display
     updateBreathingDisplay(currentPhase);
 
-    // Ajuster la distance de la caméra (inspiration = se rapprocher du globe)
+    // Adjust camera distance (inspiration = get closer to globe)
     const currentDistance = baseDistance - breathAmplitude * progress;
     const direction = controls.object.position.clone().normalize();
     controls.object.position.copy(direction.multiplyScalar(currentDistance));
@@ -513,11 +513,11 @@ function startBreathingAnimation() {
   breathingAnimationId = requestAnimationFrame(animateBreathing);
 }
 
-// Fonction pour mettre à jour l'affichage de la phase de respiration
+// Function to update breathing phase display
 function updateBreathingDisplay(phase) {
-  const timeDisplay = document.getElementById('time-display');
+  const timeDisplay = document.getElementById("time-display");
   if (timeDisplay) {
-    // Sauvegarder le contenu original la première fois
+    // Save original content the first time
     if (originalCountdownContent === null) {
       originalCountdownContent = timeDisplay.textContent;
     }
@@ -525,27 +525,27 @@ function updateBreathingDisplay(phase) {
   }
 }
 
-// Fonction pour restaurer l'affichage du countdown
+// Function to restore countdown display
 function restoreCountdownDisplay() {
-  const timeDisplay = document.getElementById('time-display');
+  const timeDisplay = document.getElementById("time-display");
   if (timeDisplay && originalCountdownContent !== null) {
-    // Ne pas restaurer le contenu original car le countdown continue
-    // Laisser le script de countdown reprendre le contrôle naturellement
+    // Don't restore original content as countdown continues
+    // Let countdown script naturally resume control
     originalCountdownContent = null;
   }
 }
 
-// Arrêter l'animation de respiration
+// Stop breathing animation
 function stopBreathingAnimation() {
   if (breathingAnimationId) {
     cancelAnimationFrame(breathingAnimationId);
     breathingAnimationId = null;
   }
 
-  // Restaurer l'affichage du countdown
+  // Restore countdown display
   restoreCountdownDisplay();
 
-  // Retourner à la distance normale
+  // Return to normal distance
   if (globeInstance) {
     const controls = globeInstance.controls();
     const baseDistance = ZOOM_CONFIG.initialDistance;
@@ -555,7 +555,7 @@ function stopBreathingAnimation() {
   }
 }
 
-// Basculer entre rotation et respiration
+// Toggle between rotation and breathing
 function toggleGlobeMode() {
   if (!globeInstance) return;
 
@@ -563,11 +563,11 @@ function toggleGlobeMode() {
   const currentDistance = controls.object.position.length();
 
   if (isBreathingMode) {
-    // Retour au mode rotation avec transition
+    // Return to rotation mode with transition
     isBreathingMode = false;
     stopBreathingAnimation();
 
-    // Transition fluide vers la distance initiale
+    // Smooth transition to initial distance
     animateZoomTransition(
       currentDistance,
       ZOOM_CONFIG.initialDistance,
@@ -578,11 +578,11 @@ function toggleGlobeMode() {
       }
     );
   } else {
-    // Mode respiration avec transition vers maxDistance
+    // Breathing mode with transition to maxDistance
     isBreathingMode = true;
     controls.autoRotate = false;
 
-    // Transition fluide vers la distance maximale puis démarrer la respiration
+    // Smooth transition to maximum distance then start breathing
     animateZoomTransition(
       currentDistance,
       ZOOM_CONFIG.maxDistance,
@@ -605,7 +605,7 @@ function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
     .width(window.innerWidth)
     .height(window.innerHeight)
 
-    // Points de la grille + utilisateur principal uniquement (Points Layer)
+    // Grid points + main user only (Points Layer)
     .pointsData([...gridData.points, ...userLocationData])
     .pointColor((d) =>
       d.isUserLocation ? USER_LOCATION_CONFIG.color : VISUAL_CONFIG.pointColor
@@ -618,7 +618,7 @@ function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
     )
     .pointResolution(12)
 
-    // Arcs de la grille
+    // Grid arcs
     .arcsData(gridData.arcs)
     .arcColor(() => VISUAL_CONFIG.pointColor)
     .arcAltitude((d) => d.altitude)
@@ -626,9 +626,9 @@ function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
     .arcDashLength(VISUAL_CONFIG.arcDashLength)
     .arcDashGap(VISUAL_CONFIG.arcDashGap)
 
-    // Autres utilisateurs (utilise le système de particules optimisé)
-    .particlesData([otherUsersData]) // Enveloppe dans un array car particlesData attend un array de sets
-    .particlesList((d) => d) // Retourne directement les particules
+    // Other users (uses optimized particle system)
+    .particlesData([otherUsersData]) // Wrap in array as particlesData expects array of sets
+    .particlesList((d) => d) // Return particles directly
     .particleLat("lat")
     .particleLng("lng")
     .particleAltitude("altitude")
@@ -636,10 +636,10 @@ function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
     .particlesSizeAttenuation(true)
     .particlesColor(() => OTHER_USERS_CONFIG.color);
 
-  // Configuration de l'inclinaison et rotation via les controls
+  // Configure tilt and rotation via controls
   const controls = globe.controls();
 
-  // Incliner le globe de 23.5 degrés en ajustant la position de la caméra
+  // Tilt globe 23.5 degrees by adjusting camera position
   controls.object.position.set(0, 0, ZOOM_CONFIG.initialDistance);
   controls.object.up.set(
     Math.sin((23.5 * Math.PI) / 180),
@@ -647,25 +647,25 @@ function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
     0
   );
 
-  // Configurer les limites de zoom
+  // Configure zoom limits
   controls.minDistance = ZOOM_CONFIG.minDistance;
   controls.maxDistance = ZOOM_CONFIG.maxDistance;
 
   controls.update();
 
-  // Activer la rotation automatique par défaut
+  // Enable automatic rotation by default
   controls.autoRotate = true;
   controls.autoRotateSpeed = 0.5;
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
 
-  // Stocker l'instance globale
+  // Store global instance
   globeInstance = globe;
 
   return globe;
 }
 
-// Classe pour gérer la géolocalisation de l'utilisateur
+// Class to manage user geolocation
 class UserLocationManager {
   constructor() {
     this.userLocation = null;
@@ -674,7 +674,7 @@ class UserLocationManager {
 
   async getUserLocation() {
     if (!this.isLocationSupported) {
-      console.warn("🌍 Géolocalisation non supportée par ce navigateur");
+      console.warn("🌍 Geolocation not supported by this browser");
       return null;
     }
 
@@ -692,14 +692,14 @@ class UserLocationManager {
             lng: position.coords.longitude,
             accuracy: position.coords.accuracy,
             id: "user_location",
-            isUserLocation: true, // Flag pour identifier la position de l'utilisateur
+            isUserLocation: true, // Flag to identify user position
           };
 
           this.userLocation = location;
           console.log(
-            `🎯 Position de l'utilisateur trouvée: ${location.lat.toFixed(
+            `🎯 User position found: ${location.lat.toFixed(
               4
-            )}, ${location.lng.toFixed(4)} (précision: ${location.accuracy}m)`
+            )}, ${location.lng.toFixed(4)} (accuracy: ${location.accuracy}m)`
           );
           resolve([location]);
         },
@@ -707,17 +707,16 @@ class UserLocationManager {
           let errorMessage = "";
           switch (error.code) {
             case error.PERMISSION_DENIED:
-              errorMessage =
-                "Permission de géolocalisation refusée par l'utilisateur";
+              errorMessage = "Geolocation permission denied by user";
               break;
             case error.POSITION_UNAVAILABLE:
-              errorMessage = "Informations de position non disponibles";
+              errorMessage = "Position information unavailable";
               break;
             case error.TIMEOUT:
-              errorMessage = "Délai d'attente de géolocalisation dépassé";
+              errorMessage = "Geolocation timeout exceeded";
               break;
             default:
-              errorMessage = "Erreur de géolocalisation inconnue";
+              errorMessage = "Unknown geolocation error";
               break;
           }
           console.warn(`🌍 ${errorMessage}`);
@@ -733,18 +732,18 @@ class UserLocationManager {
       const userLocationData = await this.getUserLocation();
 
       if (userLocationData && userLocationData.length > 0) {
-        // Combiner seulement grille + utilisateur actuel (les autres utilisateurs sont des particules)
+        // Combine only grid + current user (other users are particles)
         const allPoints = [...gridData.points, ...userLocationData];
 
-        // Mettre à jour le globe avec les points (grille + utilisateur)
+        // Update globe with points (grid + user)
         globe.pointsData(allPoints);
 
-        // Centrer la vue sur la position de l'utilisateur
+        // Center view on user position
         globe.pointOfView(
           {
             lat: userLocationData[0].lat,
             lng: userLocationData[0].lng,
-            altitude: ZOOM_CONFIG.initialDistance / 100, // Convertir la distance en altitude pour pointOfView
+            altitude: ZOOM_CONFIG.initialDistance / 100, // Convert distance to altitude for pointOfView
           },
           2000
         );
@@ -752,10 +751,7 @@ class UserLocationManager {
         return userLocationData;
       }
     } catch (error) {
-      console.error(
-        "Erreur lors de l'initialisation de la géolocalisation:",
-        error
-      );
+      console.error("Error initializing geolocation:", error);
     }
 
     return [];
@@ -767,23 +763,23 @@ async function initializeGlobe() {
   const gridGenerator = new TriangularGridGenerator();
   const gridData = gridGenerator.generate();
 
-  // Générer les utilisateurs simulés dans les zones peuplées
+  // Generate simulated users in populated areas
   const usersGenerator = new PopulatedUsersGenerator();
   const otherUsers = await usersGenerator.generate();
 
-  // Créer le globe avec grille (points) et autres utilisateurs (particules)
+  // Create globe with grid (points) and other users (particles)
   const world = createGlobe(gridData, [], otherUsers);
 
-  // Initialiser la géolocalisation de l'utilisateur
+  // Initialize user geolocation
   const locationManager = new UserLocationManager();
   locationManager.initializeLocation(world, gridData);
 
-  // Ajouter l'événement de clic sur le coeur
+  // Add click event on heart button
   const heartButton = document.getElementById("heart-button");
   if (heartButton) {
     heartButton.addEventListener("click", toggleGlobeMode);
   }
 }
 
-// Lancer l'initialisation
+// Launch initialization
 initializeGlobe();
