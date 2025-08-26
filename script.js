@@ -32,6 +32,22 @@ const OTHER_USERS_CONFIG = {
   numberOfUsers: 10000,
 };
 
+// Configuration pour les niveaux de zoom et respiration
+const ZOOM_CONFIG = {
+  initialDistance: 400, // Distance initiale de la caméra
+  minDistance: 200, // Zoom minimum (plus proche)
+  maxDistance: 1000, // Zoom maximum (plus loin)
+  breathingAmplitude: 0.5, // Amplitude de l'animation de respiration (80% de variation)
+  transitionDuration: 1000, // Durée de transition entre les niveaux de zoom (ms)
+  // Temps de respiration en secondes
+  breathingTiming: {
+    inspire: 3, // Inspiration en secondes
+    pause: 2, // Pause/rétention en secondes
+    expire: 3, // Expiration en secondes
+  },
+  pauseMicroAmplitude: 0.005, // Mini amplitude pour l'animation pendant la pause (2% de variation)
+};
+
 // Classe pour générer des utilisateurs simulés dans les zones peuplées
 class PopulatedUsersGenerator {
   constructor(config = OTHER_USERS_CONFIG) {
@@ -381,10 +397,47 @@ class TriangularGridGenerator {
 let globeInstance = null;
 let isBreathingMode = false;
 let breathingAnimationId = null;
+let zoomTransitionId = null;
 
 // Fonction d'easing pour l'animation de respiration
 function easeInOutQuad(t) {
   return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+}
+
+// Fonction pour animer une transition de zoom fluide
+function animateZoomTransition(fromDistance, toDistance, duration, onComplete) {
+  if (!globeInstance) return;
+
+  if (zoomTransitionId) {
+    cancelAnimationFrame(zoomTransitionId);
+  }
+
+  const controls = globeInstance.controls();
+  const startTime = performance.now();
+
+  function animateZoom(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Utiliser easing pour une transition fluide
+    const easedProgress = easeInOutQuad(progress);
+    const currentDistance =
+      fromDistance + (toDistance - fromDistance) * easedProgress;
+
+    // Appliquer la nouvelle distance
+    const direction = controls.object.position.clone().normalize();
+    controls.object.position.copy(direction.multiplyScalar(currentDistance));
+    controls.update();
+
+    if (progress < 1) {
+      zoomTransitionId = requestAnimationFrame(animateZoom);
+    } else {
+      zoomTransitionId = null;
+      if (onComplete) onComplete();
+    }
+  }
+
+  zoomTransitionId = requestAnimationFrame(animateZoom);
 }
 
 // Animation de respiration cohérence cardiaque (4-2-6 secondes)
@@ -392,11 +445,25 @@ function startBreathingAnimation() {
   if (!globeInstance || breathingAnimationId) return;
 
   const controls = globeInstance.controls();
-  const baseDistance = controls.object.position.length();
-  const breathAmplitude = baseDistance * 0.3; // 10% de variation
+  // Utiliser maxDistance comme base pour l'animation de respiration
+  const baseDistance = ZOOM_CONFIG.maxDistance;
+  const breathAmplitude = baseDistance * ZOOM_CONFIG.breathingAmplitude;
 
   let startTime = performance.now();
-  const cycleDuration = 12000; // 4+2+6 = 12 secondes par cycle
+
+  // Calculer les durées en millisecondes depuis la configuration
+  const inspireDuration = ZOOM_CONFIG.breathingTiming.inspire * 1000;
+  const pauseDuration = ZOOM_CONFIG.breathingTiming.pause * 1000;
+  const expireDuration = ZOOM_CONFIG.breathingTiming.expire * 1000;
+  const cycleDuration = inspireDuration + pauseDuration + expireDuration;
+
+  console.log(
+    `🫁 Cycle de respiration: ${ZOOM_CONFIG.breathingTiming.inspire}s-${
+      ZOOM_CONFIG.breathingTiming.pause
+    }s-${ZOOM_CONFIG.breathingTiming.expire}s (amplitude: ${
+      ZOOM_CONFIG.breathingAmplitude * 100
+    }%)`
+  );
 
   function animateBreathing(currentTime) {
     if (!isBreathingMode) return;
@@ -404,19 +471,28 @@ function startBreathingAnimation() {
     const elapsed = (currentTime - startTime) % cycleDuration;
     let progress = 0;
 
-    if (elapsed <= 4000) {
-      // Inspiration (4 secondes)
-      progress = easeInOutQuad(elapsed / 4000);
-    } else if (elapsed <= 6000) {
-      // Rétention (2 secondes) - maintenir l'inspiration
-      progress = 1;
+    if (elapsed <= inspireDuration) {
+      // Phase d'inspiration - se rapprocher
+      progress = easeInOutQuad(elapsed / inspireDuration);
+    } else if (elapsed <= inspireDuration + pauseDuration) {
+      // Phase de rétention avec mini animation
+      const pauseElapsed = elapsed - inspireDuration;
+      const pauseProgress = pauseElapsed / pauseDuration;
+
+      // Mini oscillation pendant la pause (cycle rapide de 0.5 seconde)
+      const microCycle = (pauseElapsed % 500) / 500; // Cycle de 0.5s
+      const microVariation =
+        Math.sin(microCycle * Math.PI * 2) * ZOOM_CONFIG.pauseMicroAmplitude;
+
+      progress = 1 + microVariation;
     } else {
-      // Expiration (6 secondes)
-      progress = 1 - easeInOutQuad((elapsed - 6000) / 6000);
+      // Phase d'expiration - s'éloigner
+      const expireElapsed = elapsed - inspireDuration - pauseDuration;
+      progress = 1 - easeInOutQuad(expireElapsed / expireDuration);
     }
 
-    // Ajuster la distance de la caméra
-    const currentDistance = baseDistance + breathAmplitude * progress;
+    // Ajuster la distance de la caméra (inspiration = se rapprocher du globe)
+    const currentDistance = baseDistance - breathAmplitude * progress;
     const direction = controls.object.position.clone().normalize();
     controls.object.position.copy(direction.multiplyScalar(currentDistance));
     controls.update();
@@ -437,7 +513,7 @@ function stopBreathingAnimation() {
   // Retourner à la distance normale
   if (globeInstance) {
     const controls = globeInstance.controls();
-    const baseDistance = 260; // Distance de base
+    const baseDistance = ZOOM_CONFIG.initialDistance;
     const direction = controls.object.position.clone().normalize();
     controls.object.position.copy(direction.multiplyScalar(baseDistance));
     controls.update();
@@ -449,18 +525,37 @@ function toggleGlobeMode() {
   if (!globeInstance) return;
 
   const controls = globeInstance.controls();
+  const currentDistance = controls.object.position.length();
 
   if (isBreathingMode) {
-    // Retour au mode rotation
+    // Retour au mode rotation avec transition
     isBreathingMode = false;
     stopBreathingAnimation();
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.5;
+
+    // Transition fluide vers la distance initiale
+    animateZoomTransition(
+      currentDistance,
+      ZOOM_CONFIG.initialDistance,
+      ZOOM_CONFIG.transitionDuration,
+      () => {
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+      }
+    );
   } else {
-    // Mode respiration
+    // Mode respiration avec transition vers maxDistance
     isBreathingMode = true;
     controls.autoRotate = false;
-    startBreathingAnimation();
+
+    // Transition fluide vers la distance maximale puis démarrer la respiration
+    animateZoomTransition(
+      currentDistance,
+      ZOOM_CONFIG.maxDistance,
+      ZOOM_CONFIG.transitionDuration,
+      () => {
+        startBreathingAnimation();
+      }
+    );
   }
 }
 
@@ -510,12 +605,17 @@ function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
   const controls = globe.controls();
 
   // Incliner le globe de 23.5 degrés en ajustant la position de la caméra
-  controls.object.position.set(0, 0, 260);
+  controls.object.position.set(0, 0, ZOOM_CONFIG.initialDistance);
   controls.object.up.set(
     Math.sin((23.5 * Math.PI) / 180),
     Math.cos((23.5 * Math.PI) / 180),
     0
   );
+
+  // Configurer les limites de zoom
+  controls.minDistance = ZOOM_CONFIG.minDistance;
+  controls.maxDistance = ZOOM_CONFIG.maxDistance;
+
   controls.update();
 
   // Activer la rotation automatique par défaut
@@ -609,7 +709,7 @@ class UserLocationManager {
           {
             lat: userLocationData[0].lat,
             lng: userLocationData[0].lng,
-            altitude: 2.5,
+            altitude: ZOOM_CONFIG.initialDistance / 100, // Convertir la distance en altitude pour pointOfView
           },
           2000
         );
