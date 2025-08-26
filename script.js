@@ -29,17 +29,17 @@ const OTHER_USERS_CONFIG = {
   color: "#e11d48", // Bleu
   size: 1, // Taille pour le système de particules
   altitude: 0.025,
-  numberOfUsers: 100000,
+  numberOfUsers: 10000,
 };
 
 // Configuration des particules
-const PARTICLES_CONFIG = {
-  color: "#e11d48",
-  size: 1,
-  altitude: 0.1,
-  numberOfParticles: 10000, // Peut aller jusqu'à 10 000 000
-  enabled: true,
-};
+// const PARTICLES_CONFIG = {
+//   color: "#e11d48",
+//   size: 0.5,
+//   altitude: 0.1,
+//   numberOfParticles: 1000000, // Peut aller jusqu'à 10 000 000
+//   enabled: true,
+// };
 
 // Zones géographiques des continents pour distribuer les points
 // const CONTINENT_BOUNDS = {
@@ -98,43 +98,129 @@ const PARTICLES_CONFIG = {
 //   }
 // }
 
-// Classe pour générer des utilisateurs simulés aléatoirement sur le globe
-class RandomUsersGenerator {
+// Classe pour générer des utilisateurs simulés dans les zones peuplées
+class PopulatedUsersGenerator {
   constructor(config = OTHER_USERS_CONFIG) {
     this.config = config;
+    this.populatedAreas = null;
   }
 
-  generate() {
+  async loadPopulatedAreas() {
+    try {
+      const response = await fetch("./data/populated_areas.geojson");
+      const data = await response.json();
+      this.populatedAreas = data.features;
+      console.log(`🌍 ${this.populatedAreas.length} zones peuplées chargées`);
+    } catch (error) {
+      console.error("Erreur lors du chargement des zones peuplées:", error);
+      // Fallback vers la génération aléatoire
+      this.populatedAreas = null;
+    }
+  }
+
+  async generate() {
+    // Charger les zones peuplées si pas encore fait
+    if (!this.populatedAreas) {
+      await this.loadPopulatedAreas();
+    }
+
     const users = [];
 
+    // Si on n'a pas pu charger les données, utiliser la méthode aléatoire
+    if (!this.populatedAreas) {
+      return this.generateRandomUsers();
+    }
+
+    // Générer des utilisateurs dans les zones peuplées selon leur poids
     for (let i = 0; i < this.config.numberOfUsers; i++) {
-      // Générer des coordonnées aléatoires uniformément distribuées sur la sphère
-      const lat = this.generateRandomLatitude();
-      const lng = this.generateRandomLongitude();
+      const coordinates = this.generateCoordinatesInPopulatedArea();
+
+      users.push({
+        lat: coordinates.lat,
+        lng: coordinates.lng,
+        altitude: this.config.altitude,
+        id: `populated_user_${i}`,
+      });
+    }
+
+    console.log(
+      `👥 ${users.length} utilisateurs simulés générés dans les zones peuplées`
+    );
+    return users;
+  }
+
+  generateCoordinatesInPopulatedArea() {
+    // Sélectionner une zone selon son poids de population
+    const area = this.selectWeightedArea();
+
+    // Générer un point aléatoire dans cette zone
+    return this.generatePointInPolygon(area.geometry.coordinates[0]);
+  }
+
+  selectWeightedArea() {
+    // Créer un tableau avec répétition selon le poids
+    const weightedAreas = [];
+    this.populatedAreas.forEach((area) => {
+      const weight = Math.round(area.properties.weight * 100);
+      for (let i = 0; i < weight; i++) {
+        weightedAreas.push(area);
+      }
+    });
+
+    // Sélection aléatoire pondérée
+    return weightedAreas[Math.floor(Math.random() * weightedAreas.length)];
+  }
+
+  generatePointInPolygon(coordinates) {
+    // Trouver les limites du polygone
+    const lats = coordinates.map((coord) => coord[1]);
+    const lngs = coordinates.map((coord) => coord[0]);
+
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+
+    // Générer un point aléatoire dans les limites avec distribution gaussienne pour plus de réalisme
+    const lat = this.gaussianRandom(minLat, maxLat, 0.3);
+    const lng = this.gaussianRandom(minLng, maxLng, 0.3);
+
+    return { lat, lng };
+  }
+
+  // Distribution gaussienne pour concentrer les points vers le centre des zones
+  gaussianRandom(min, max, concentration = 0.3) {
+    const center = (min + max) / 2;
+    const range = max - min;
+
+    // Box-Muller transform pour distribution gaussienne
+    const u1 = Math.random();
+    const u2 = Math.random();
+    const gaussian = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+
+    // Appliquer la concentration et les limites
+    const value = center + gaussian * range * concentration;
+    return Math.max(min, Math.min(max, value));
+  }
+
+  // Méthode de fallback si les données géographiques ne se chargent pas
+  generateRandomUsers() {
+    const users = [];
+    for (let i = 0; i < this.config.numberOfUsers; i++) {
+      const lat = Math.asin(2 * Math.random() - 1) * (180 / Math.PI);
+      const lng = (Math.random() - 0.5) * 360;
 
       users.push({
         lat,
         lng,
         altitude: this.config.altitude,
-        id: `other_user_${i}`,
+        id: `random_user_${i}`,
       });
     }
-
     console.log(
-      `👥 ${users.length} utilisateurs simulés générés pour le système de particules`
+      `👥 ${users.length} utilisateurs simulés générés aléatoirement (fallback)`
     );
     return users;
-  }
-
-  // Génère une latitude avec une distribution uniforme sur la sphère
-  generateRandomLatitude() {
-    // Pour une distribution uniforme sur la sphère, on utilise l'arc sinus
-    return Math.asin(2 * Math.random() - 1) * (180 / Math.PI);
-  }
-
-  // Génère une longitude aléatoire uniforme
-  generateRandomLongitude() {
-    return (Math.random() - 0.5) * 360;
   }
 }
 
@@ -438,16 +524,21 @@ class UserLocationManager {
 }
 
 // Main execution
-const gridGenerator = new TriangularGridGenerator();
-const gridData = gridGenerator.generate();
+async function initializeGlobe() {
+  const gridGenerator = new TriangularGridGenerator();
+  const gridData = gridGenerator.generate();
 
-// Générer les utilisateurs simulés (pour le système de particules)
-const usersGenerator = new RandomUsersGenerator();
-const otherUsers = usersGenerator.generate();
+  // Générer les utilisateurs simulés dans les zones peuplées
+  const usersGenerator = new PopulatedUsersGenerator();
+  const otherUsers = await usersGenerator.generate();
 
-// Créer le globe avec grille (points) et autres utilisateurs (particules)
-const world = createGlobe(gridData, [], otherUsers);
+  // Créer le globe avec grille (points) et autres utilisateurs (particules)
+  const world = createGlobe(gridData, [], otherUsers);
 
-// Initialiser la géolocalisation de l'utilisateur
-const locationManager = new UserLocationManager();
-locationManager.initializeLocation(world, gridData);
+  // Initialiser la géolocalisation de l'utilisateur
+  const locationManager = new UserLocationManager();
+  locationManager.initializeLocation(world, gridData);
+}
+
+// Lancer l'initialisation
+initializeGlobe();

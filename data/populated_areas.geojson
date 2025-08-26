@@ -1,0 +1,246 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Europe",
+        "weight": 0.15,
+        "description": "Zone densément peuplée d'Europe"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-10, 35],
+            [30, 35],
+            [40, 60],
+            [20, 70],
+            [-10, 65],
+            [-10, 35]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "East Asia",
+        "weight": 0.25,
+        "description": "Chine, Japon, Corée du Sud"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [100, 20],
+            [145, 20],
+            [145, 50],
+            [100, 50],
+            [100, 20]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Indian Subcontinent",
+        "weight": 0.2,
+        "description": "Inde, Pakistan, Bangladesh"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [68, 8],
+            [97, 8],
+            [97, 35],
+            [68, 35],
+            [68, 8]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "North America East",
+        "weight": 0.1,
+        "description": "Côte Est des États-Unis et Canada"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-95, 25],
+            [-65, 25],
+            [-65, 50],
+            [-95, 50],
+            [-95, 25]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "North America West",
+        "weight": 0.08,
+        "description": "Côte Ouest des États-Unis et Canada"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-125, 30],
+            [-110, 30],
+            [-110, 50],
+            [-125, 50],
+            [-125, 30]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Southeast Asia",
+        "weight": 0.12,
+        "description": "Indonésie, Philippines, Thaïlande, Vietnam"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [95, -10],
+            [140, -10],
+            [140, 20],
+            [95, 20],
+            [95, -10]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Brazil",
+        "weight": 0.06,
+        "description": "Zones peuplées du Brésil"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-60, -30],
+            [-35, -30],
+            [-35, 5],
+            [-60, 5],
+            [-60, -30]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Africa West",
+        "weight": 0.04,
+        "description": "Afrique de l'Ouest"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-20, 4],
+            [20, 4],
+            [20, 20],
+            [-20, 20],
+            [-20, 4]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Australia",
+        "weight": 0.02,
+        "description": "Côtes australiennes"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110, -45],
+            [155, -45],
+            [155, -10],
+            [110, -10],
+            [110, -45]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Argentina",
+        "weight": 0.03,
+        "description": "Zone urbaine d'Argentine"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-70, -40],
+            [-55, -40],
+            [-55, -25],
+            [-70, -25],
+            [-70, -40]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Middle East",
+        "weight": 0.03,
+        "description": "Moyen-Orient"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [30, 25],
+            [60, 25],
+            [60, 40],
+            [30, 40],
+            [30, 25]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Russia West",
+        "weight": 0.04,
+        "description": "Russie occidentale"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [30, 50],
+            [60, 50],
+            [60, 65],
+            [30, 65],
+            [30, 50]
+          ]
+        ]
+      }
+    }
+  ]
+}
