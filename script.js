@@ -7,26 +7,26 @@ const GRID_CONFIG = {
 };
 
 const VISUAL_CONFIG = {
-  pointColor: "#404040",
+  pointColor: "#F8ED43",
   pointRadius: 0.2,
   arcStroke: 0.1,
   arcDashLength: 0.05, // Longueur des segments pointillés
   arcDashGap: 0.02, // Espacement entre les segments
-  backgroundColor: "#f5f5f4",
-  atmosphereColor: "#d4d4d4",
-  atmosphereAltitude: 0.5,
+  backgroundColor: "#A1A39A",
+  atmosphereColor: "#F8ED43",
+  atmosphereAltitude: 0.25,
 };
 
 // Configuration pour la géolocalisation de l'utilisateur
 const USER_LOCATION_CONFIG = {
-  color: "#ef4444", // Rouge
+  color: "#F8ED43", // Rouge
   radius: 0.8,
   altitude: 0.05,
 };
 
 // Configuration pour les autres utilisateurs en ligne (utilisant le système de particules)
 const OTHER_USERS_CONFIG = {
-  color: "#e11d48", // Bleu
+  color: "#F8ED43", // Bleu
   size: 1, // Taille pour le système de particules
   altitude: 0.025,
   numberOfUsers: 10000,
@@ -384,7 +384,7 @@ class TriangularGridGenerator {
 function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
   return (
     Globe()(document.getElementById("globeViz"))
-      .globeImageUrl("./img/earth-light.jpg")
+      .globeImageUrl("./img/earth-bi.jpg")
       .backgroundColor(VISUAL_CONFIG.backgroundColor)
       .atmosphereColor(VISUAL_CONFIG.atmosphereColor)
       .atmosphereAltitude(VISUAL_CONFIG.atmosphereAltitude)
