@@ -1,6 +1,6 @@
 // Configuration constants
 const GRID_CONFIG = {
-  altitude: 0,
+  altitude: 0.05,
   latDivisions: 12,
   lngDivisions: 24,
   tolerance: 0.1,
@@ -21,7 +21,15 @@ const VISUAL_CONFIG = {
 const USER_LOCATION_CONFIG = {
   color: "#ef4444", // Rouge
   radius: 0.8,
-  altitude: 0,
+  altitude: 0.05,
+};
+
+// Configuration pour les autres utilisateurs en ligne (utilisant le système de particules)
+const OTHER_USERS_CONFIG = {
+  color: "#e11d48", // Bleu
+  size: 1, // Taille pour le système de particules
+  altitude: 0.025,
+  numberOfUsers: 100000,
 };
 
 // Configuration des particules
@@ -89,6 +97,46 @@ const PARTICLES_CONFIG = {
 //     return min + Math.random() * (max - min);
 //   }
 // }
+
+// Classe pour générer des utilisateurs simulés aléatoirement sur le globe
+class RandomUsersGenerator {
+  constructor(config = OTHER_USERS_CONFIG) {
+    this.config = config;
+  }
+
+  generate() {
+    const users = [];
+
+    for (let i = 0; i < this.config.numberOfUsers; i++) {
+      // Générer des coordonnées aléatoires uniformément distribuées sur la sphère
+      const lat = this.generateRandomLatitude();
+      const lng = this.generateRandomLongitude();
+
+      users.push({
+        lat,
+        lng,
+        altitude: this.config.altitude,
+        id: `other_user_${i}`,
+      });
+    }
+
+    console.log(
+      `👥 ${users.length} utilisateurs simulés générés pour le système de particules`
+    );
+    return users;
+  }
+
+  // Génère une latitude avec une distribution uniforme sur la sphère
+  generateRandomLatitude() {
+    // Pour une distribution uniforme sur la sphère, on utilise l'arc sinus
+    return Math.asin(2 * Math.random() - 1) * (180 / Math.PI);
+  }
+
+  // Génère une longitude aléatoire uniforme
+  generateRandomLongitude() {
+    return (Math.random() - 0.5) * 360;
+  }
+}
 
 // Grid generator class
 class TriangularGridGenerator {
@@ -247,7 +295,7 @@ class TriangularGridGenerator {
 }
 
 // Globe setup function
-function createGlobe(gridData, userLocationData = []) {
+function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
   return (
     Globe()(document.getElementById("globeViz"))
       .globeImageUrl("./img/earth-light.jpg")
@@ -257,7 +305,7 @@ function createGlobe(gridData, userLocationData = []) {
       .width(window.innerWidth)
       .height(window.innerHeight)
 
-      // Points de la grille (utilise la couche Points Layer)
+      // Points de la grille + utilisateur principal uniquement (Points Layer)
       .pointsData([...gridData.points, ...userLocationData])
       .pointColor((d) =>
         d.isUserLocation ? USER_LOCATION_CONFIG.color : VISUAL_CONFIG.pointColor
@@ -280,15 +328,15 @@ function createGlobe(gridData, userLocationData = []) {
       .arcDashLength(VISUAL_CONFIG.arcDashLength)
       .arcDashGap(VISUAL_CONFIG.arcDashGap)
 
-    // Particules (utilise la couche Particles Layer pour les performances)
-    // .particlesData([particlesData]) // Enveloppe dans un array car particlesData attend un array de sets
-    // .particlesList((d) => d) // Retourne directement les particules
-    // .particleLat("lat")
-    // .particleLng("lng")
-    // .particleAltitude("altitude")
-    // .particlesSize(PARTICLES_CONFIG.size)
-    // .particlesSizeAttenuation(true)
-    // .particlesColor(() => PARTICLES_CONFIG.color)
+      // Autres utilisateurs (utilise le système de particules optimisé)
+      .particlesData([otherUsersData]) // Enveloppe dans un array car particlesData attend un array de sets
+      .particlesList((d) => d) // Retourne directement les particules
+      .particleLat("lat")
+      .particleLng("lng")
+      .particleAltitude("altitude")
+      .particlesSize(OTHER_USERS_CONFIG.size)
+      .particlesSizeAttenuation(true)
+      .particlesColor(() => OTHER_USERS_CONFIG.color)
   );
 }
 
@@ -360,10 +408,10 @@ class UserLocationManager {
       const userLocationData = await this.getUserLocation();
 
       if (userLocationData && userLocationData.length > 0) {
-        // Combiner les points de la grille avec la position de l'utilisateur
+        // Combiner seulement grille + utilisateur actuel (les autres utilisateurs sont des particules)
         const allPoints = [...gridData.points, ...userLocationData];
 
-        // Mettre à jour le globe avec tous les points
+        // Mettre à jour le globe avec les points (grille + utilisateur)
         globe.pointsData(allPoints);
 
         // Centrer la vue sur la position de l'utilisateur
@@ -393,12 +441,12 @@ class UserLocationManager {
 const gridGenerator = new TriangularGridGenerator();
 const gridData = gridGenerator.generate();
 
-// Générer les particules
-// const particlesGenerator = new RandomParticlesGenerator();
-// const particles = particlesGenerator.generate();
+// Générer les utilisateurs simulés (pour le système de particules)
+const usersGenerator = new RandomUsersGenerator();
+const otherUsers = usersGenerator.generate();
 
-// Créer le globe avec grille
-const world = createGlobe(gridData);
+// Créer le globe avec grille (points) et autres utilisateurs (particules)
+const world = createGlobe(gridData, [], otherUsers);
 
 // Initialiser la géolocalisation de l'utilisateur
 const locationManager = new UserLocationManager();
