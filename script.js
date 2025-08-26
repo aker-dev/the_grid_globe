@@ -1,4 +1,7 @@
-// Configuration constants
+// =============================================================================
+// CONFIGURATION CONSTANTS
+// =============================================================================
+
 const GRID_CONFIG = {
   altitude: 0.05,
   latDivisions: 12,
@@ -48,7 +51,10 @@ const ZOOM_CONFIG = {
   pauseMicroAmplitude: 0.005, // Mini amplitude for pause animation (2% variation)
 };
 
-// Class to generate simulated users in populated areas
+// =============================================================================
+// CORE CLASSES
+// =============================================================================
+
 class PopulatedUsersGenerator {
   constructor(config = OTHER_USERS_CONFIG) {
     this.config = config;
@@ -237,7 +243,6 @@ class PopulatedUsersGenerator {
   }
 }
 
-// Grid generator class
 class TriangularGridGenerator {
   constructor(config = GRID_CONFIG) {
     this.config = config;
@@ -393,279 +398,6 @@ class TriangularGridGenerator {
   }
 }
 
-// Global variables for animation management
-let globeInstance = null;
-let isBreathingMode = false;
-let breathingAnimationId = null;
-let zoomTransitionId = null;
-let originalCountdownContent = null;
-
-// Easing function for breathing animation
-function easeInOutQuad(t) {
-  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-}
-
-// Function to animate smooth zoom transition
-function animateZoomTransition(fromDistance, toDistance, duration, onComplete) {
-  if (!globeInstance) return;
-
-  if (zoomTransitionId) {
-    cancelAnimationFrame(zoomTransitionId);
-  }
-
-  const controls = globeInstance.controls();
-  const startTime = performance.now();
-
-  function animateZoom(currentTime) {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-
-    // Use easing for smooth transition
-    const easedProgress = easeInOutQuad(progress);
-    const currentDistance =
-      fromDistance + (toDistance - fromDistance) * easedProgress;
-
-    // Apply new distance
-    const direction = controls.object.position.clone().normalize();
-    controls.object.position.copy(direction.multiplyScalar(currentDistance));
-    controls.update();
-
-    if (progress < 1) {
-      zoomTransitionId = requestAnimationFrame(animateZoom);
-    } else {
-      zoomTransitionId = null;
-      if (onComplete) onComplete();
-    }
-  }
-
-  zoomTransitionId = requestAnimationFrame(animateZoom);
-}
-
-// Heart coherence breathing animation (4-2-6 seconds)
-function startBreathingAnimation() {
-  if (!globeInstance || breathingAnimationId) return;
-
-  const controls = globeInstance.controls();
-  // Use maxDistance as base for breathing animation
-  const baseDistance = ZOOM_CONFIG.maxDistance;
-  const breathAmplitude = baseDistance * ZOOM_CONFIG.breathingAmplitude;
-
-  let startTime = performance.now();
-
-  // Calculate durations in milliseconds from configuration
-  const inspireDuration = ZOOM_CONFIG.breathingTiming.inspire * 1000;
-  const pauseDuration = ZOOM_CONFIG.breathingTiming.pause * 1000;
-  const expireDuration = ZOOM_CONFIG.breathingTiming.expire * 1000;
-  const cycleDuration = inspireDuration + pauseDuration + expireDuration;
-
-  console.log(
-    `🫁 Breathing cycle: ${ZOOM_CONFIG.breathingTiming.inspire}s-${
-      ZOOM_CONFIG.breathingTiming.pause
-    }s-${ZOOM_CONFIG.breathingTiming.expire}s (amplitude: ${
-      ZOOM_CONFIG.breathingAmplitude * 100
-    }%)`
-  );
-
-  function animateBreathing(currentTime) {
-    if (!isBreathingMode) return;
-
-    const elapsed = (currentTime - startTime) % cycleDuration;
-    let progress = 0;
-
-    // Determine current phase and update display
-    let currentPhase = "";
-
-    if (elapsed <= inspireDuration) {
-      // Inspiration phase - get closer
-      progress = easeInOutQuad(elapsed / inspireDuration);
-      currentPhase = "INHALE";
-    } else if (elapsed <= inspireDuration + pauseDuration) {
-      // Retention phase with mini animation
-      const pauseElapsed = elapsed - inspireDuration;
-      const pauseProgress = pauseElapsed / pauseDuration;
-
-      // Mini oscillation during pause (fast 0.5 second cycle)
-      const microCycle = (pauseElapsed % 500) / 500; // 0.5s cycle
-      const microVariation =
-        Math.sin(microCycle * Math.PI * 2) * ZOOM_CONFIG.pauseMicroAmplitude;
-
-      progress = 1 + microVariation;
-      currentPhase = "PAUSE";
-    } else {
-      // Expiration phase - move away
-      const expireElapsed = elapsed - inspireDuration - pauseDuration;
-      progress = 1 - easeInOutQuad(expireElapsed / expireDuration);
-      currentPhase = "EXHALE";
-    }
-
-    // Update breathing phase display
-    updateBreathingDisplay(currentPhase);
-
-    // Adjust camera distance (inspiration = get closer to globe)
-    const currentDistance = baseDistance - breathAmplitude * progress;
-    const direction = controls.object.position.clone().normalize();
-    controls.object.position.copy(direction.multiplyScalar(currentDistance));
-    controls.update();
-
-    breathingAnimationId = requestAnimationFrame(animateBreathing);
-  }
-
-  breathingAnimationId = requestAnimationFrame(animateBreathing);
-}
-
-// Function to update breathing phase display
-function updateBreathingDisplay(phase) {
-  const timeDisplay = document.getElementById("time-display");
-  if (timeDisplay) {
-    // Save original content the first time
-    if (originalCountdownContent === null) {
-      originalCountdownContent = timeDisplay.textContent;
-    }
-    timeDisplay.textContent = phase;
-  }
-}
-
-// Function to restore countdown display
-function restoreCountdownDisplay() {
-  const timeDisplay = document.getElementById("time-display");
-  if (timeDisplay && originalCountdownContent !== null) {
-    // Don't restore original content as countdown continues
-    // Let countdown script naturally resume control
-    originalCountdownContent = null;
-  }
-}
-
-// Stop breathing animation
-function stopBreathingAnimation() {
-  if (breathingAnimationId) {
-    cancelAnimationFrame(breathingAnimationId);
-    breathingAnimationId = null;
-  }
-
-  // Restore countdown display
-  restoreCountdownDisplay();
-
-  // Return to normal distance
-  if (globeInstance) {
-    const controls = globeInstance.controls();
-    const baseDistance = ZOOM_CONFIG.initialDistance;
-    const direction = controls.object.position.clone().normalize();
-    controls.object.position.copy(direction.multiplyScalar(baseDistance));
-    controls.update();
-  }
-}
-
-// Toggle between rotation and breathing
-function toggleGlobeMode() {
-  if (!globeInstance) return;
-
-  const controls = globeInstance.controls();
-  const currentDistance = controls.object.position.length();
-
-  if (isBreathingMode) {
-    // Return to rotation mode with transition
-    isBreathingMode = false;
-    stopBreathingAnimation();
-
-    // Smooth transition to initial distance
-    animateZoomTransition(
-      currentDistance,
-      ZOOM_CONFIG.initialDistance,
-      ZOOM_CONFIG.transitionDuration,
-      () => {
-        controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.5;
-      }
-    );
-  } else {
-    // Breathing mode with transition to maxDistance
-    isBreathingMode = true;
-    controls.autoRotate = false;
-
-    // Smooth transition to maximum distance then start breathing
-    animateZoomTransition(
-      currentDistance,
-      ZOOM_CONFIG.maxDistance,
-      ZOOM_CONFIG.transitionDuration,
-      () => {
-        startBreathingAnimation();
-      }
-    );
-  }
-}
-
-// Globe setup function
-function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
-  const globe = Globe()(document.getElementById("globeViz"))
-    .globeImageUrl("./img/earth-bi.jpg")
-    .backgroundImageUrl("./img/night-sky.png")
-    .backgroundColor(VISUAL_CONFIG.backgroundColor)
-    .atmosphereColor(VISUAL_CONFIG.atmosphereColor)
-    .atmosphereAltitude(VISUAL_CONFIG.atmosphereAltitude)
-    .width(window.innerWidth)
-    .height(window.innerHeight)
-
-    // Grid points + main user only (Points Layer)
-    .pointsData([...gridData.points, ...userLocationData])
-    .pointColor((d) =>
-      d.isUserLocation ? USER_LOCATION_CONFIG.color : VISUAL_CONFIG.pointColor
-    )
-    .pointRadius((d) =>
-      d.isUserLocation ? USER_LOCATION_CONFIG.radius : VISUAL_CONFIG.pointRadius
-    )
-    .pointAltitude((d) =>
-      d.isUserLocation ? USER_LOCATION_CONFIG.altitude : 0
-    )
-    .pointResolution(12)
-
-    // Grid arcs
-    .arcsData(gridData.arcs)
-    .arcColor(() => VISUAL_CONFIG.pointColor)
-    .arcAltitude((d) => d.altitude)
-    .arcStroke(VISUAL_CONFIG.arcStroke)
-    .arcDashLength(VISUAL_CONFIG.arcDashLength)
-    .arcDashGap(VISUAL_CONFIG.arcDashGap)
-
-    // Other users (uses optimized particle system)
-    .particlesData([otherUsersData]) // Wrap in array as particlesData expects array of sets
-    .particlesList((d) => d) // Return particles directly
-    .particleLat("lat")
-    .particleLng("lng")
-    .particleAltitude("altitude")
-    .particlesSize(OTHER_USERS_CONFIG.size)
-    .particlesSizeAttenuation(true)
-    .particlesColor(() => OTHER_USERS_CONFIG.color);
-
-  // Configure tilt and rotation via controls
-  const controls = globe.controls();
-
-  // Tilt globe 23.5 degrees by adjusting camera position
-  controls.object.position.set(0, 0, ZOOM_CONFIG.initialDistance);
-  controls.object.up.set(
-    Math.sin((23.5 * Math.PI) / 180),
-    Math.cos((23.5 * Math.PI) / 180),
-    0
-  );
-
-  // Configure zoom limits
-  controls.minDistance = ZOOM_CONFIG.minDistance;
-  controls.maxDistance = ZOOM_CONFIG.maxDistance;
-
-  controls.update();
-
-  // Enable automatic rotation by default
-  controls.autoRotate = true;
-  controls.autoRotateSpeed = 0.5;
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
-
-  // Store global instance
-  globeInstance = globe;
-
-  return globe;
-}
-
-// Class to manage user geolocation
 class UserLocationManager {
   constructor() {
     this.userLocation = null;
@@ -758,7 +490,280 @@ class UserLocationManager {
   }
 }
 
-// Main execution
+// =============================================================================
+// ANIMATION & INTERACTION SYSTEM
+// =============================================================================
+let globeInstance = null;
+let isBreathingMode = false;
+let breathingAnimationId = null;
+let zoomTransitionId = null;
+let originalCountdownContent = null;
+
+function easeInOutQuad(t) {
+  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+}
+
+function animateZoomTransition(fromDistance, toDistance, duration, onComplete) {
+  if (!globeInstance) return;
+
+  if (zoomTransitionId) {
+    cancelAnimationFrame(zoomTransitionId);
+  }
+
+  const controls = globeInstance.controls();
+  const startTime = performance.now();
+
+  function animateZoom(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Use easing for smooth transition
+    const easedProgress = easeInOutQuad(progress);
+    const currentDistance =
+      fromDistance + (toDistance - fromDistance) * easedProgress;
+
+    // Apply new distance
+    const direction = controls.object.position.clone().normalize();
+    controls.object.position.copy(direction.multiplyScalar(currentDistance));
+    controls.update();
+
+    if (progress < 1) {
+      zoomTransitionId = requestAnimationFrame(animateZoom);
+    } else {
+      zoomTransitionId = null;
+      if (onComplete) onComplete();
+    }
+  }
+
+  zoomTransitionId = requestAnimationFrame(animateZoom);
+}
+
+function startBreathingAnimation() {
+  if (!globeInstance || breathingAnimationId) return;
+
+  const controls = globeInstance.controls();
+  // Use maxDistance as base for breathing animation
+  const baseDistance = ZOOM_CONFIG.maxDistance;
+  const breathAmplitude = baseDistance * ZOOM_CONFIG.breathingAmplitude;
+
+  let startTime = performance.now();
+
+  // Calculate durations in milliseconds from configuration
+  const inspireDuration = ZOOM_CONFIG.breathingTiming.inspire * 1000;
+  const pauseDuration = ZOOM_CONFIG.breathingTiming.pause * 1000;
+  const expireDuration = ZOOM_CONFIG.breathingTiming.expire * 1000;
+  const cycleDuration = inspireDuration + pauseDuration + expireDuration;
+
+  console.log(
+    `🫁 Breathing cycle: ${ZOOM_CONFIG.breathingTiming.inspire}s-${
+      ZOOM_CONFIG.breathingTiming.pause
+    }s-${ZOOM_CONFIG.breathingTiming.expire}s (amplitude: ${
+      ZOOM_CONFIG.breathingAmplitude * 100
+    }%)`
+  );
+
+  function animateBreathing(currentTime) {
+    if (!isBreathingMode) return;
+
+    const elapsed = (currentTime - startTime) % cycleDuration;
+    let progress = 0;
+
+    // Determine current phase and update display
+    let currentPhase = "";
+
+    if (elapsed <= inspireDuration) {
+      // Inspiration phase - get closer
+      progress = easeInOutQuad(elapsed / inspireDuration);
+      currentPhase = "INHALE";
+    } else if (elapsed <= inspireDuration + pauseDuration) {
+      // Retention phase with mini animation
+      const pauseElapsed = elapsed - inspireDuration;
+      const pauseProgress = pauseElapsed / pauseDuration;
+
+      // Mini oscillation during pause (fast 0.5 second cycle)
+      const microCycle = (pauseElapsed % 500) / 500; // 0.5s cycle
+      const microVariation =
+        Math.sin(microCycle * Math.PI * 2) * ZOOM_CONFIG.pauseMicroAmplitude;
+
+      progress = 1 + microVariation;
+      currentPhase = "PAUSE";
+    } else {
+      // Expiration phase - move away
+      const expireElapsed = elapsed - inspireDuration - pauseDuration;
+      progress = 1 - easeInOutQuad(expireElapsed / expireDuration);
+      currentPhase = "EXHALE";
+    }
+
+    // Update breathing phase display
+    updateBreathingDisplay(currentPhase);
+
+    // Adjust camera distance (inspiration = get closer to globe)
+    const currentDistance = baseDistance - breathAmplitude * progress;
+    const direction = controls.object.position.clone().normalize();
+    controls.object.position.copy(direction.multiplyScalar(currentDistance));
+    controls.update();
+
+    breathingAnimationId = requestAnimationFrame(animateBreathing);
+  }
+
+  breathingAnimationId = requestAnimationFrame(animateBreathing);
+}
+
+function updateBreathingDisplay(phase) {
+  const timeDisplay = document.getElementById("time-display");
+  if (timeDisplay) {
+    // Save original content the first time
+    if (originalCountdownContent === null) {
+      originalCountdownContent = timeDisplay.textContent;
+    }
+    timeDisplay.textContent = phase;
+  }
+}
+
+function restoreCountdownDisplay() {
+  const timeDisplay = document.getElementById("time-display");
+  if (timeDisplay && originalCountdownContent !== null) {
+    // Don't restore original content as countdown continues
+    // Let countdown script naturally resume control
+    originalCountdownContent = null;
+  }
+}
+
+function stopBreathingAnimation() {
+  if (breathingAnimationId) {
+    cancelAnimationFrame(breathingAnimationId);
+    breathingAnimationId = null;
+  }
+
+  // Restore countdown display
+  restoreCountdownDisplay();
+
+  // Return to normal distance
+  if (globeInstance) {
+    const controls = globeInstance.controls();
+    const baseDistance = ZOOM_CONFIG.initialDistance;
+    const direction = controls.object.position.clone().normalize();
+    controls.object.position.copy(direction.multiplyScalar(baseDistance));
+    controls.update();
+  }
+}
+
+function toggleGlobeMode() {
+  if (!globeInstance) return;
+
+  const controls = globeInstance.controls();
+  const currentDistance = controls.object.position.length();
+
+  if (isBreathingMode) {
+    // Return to rotation mode with transition
+    isBreathingMode = false;
+    stopBreathingAnimation();
+
+    // Smooth transition to initial distance
+    animateZoomTransition(
+      currentDistance,
+      ZOOM_CONFIG.initialDistance,
+      ZOOM_CONFIG.transitionDuration,
+      () => {
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+      }
+    );
+  } else {
+    // Breathing mode with transition to maxDistance
+    isBreathingMode = true;
+    controls.autoRotate = false;
+
+    // Smooth transition to maximum distance then start breathing
+    animateZoomTransition(
+      currentDistance,
+      ZOOM_CONFIG.maxDistance,
+      ZOOM_CONFIG.transitionDuration,
+      () => {
+        startBreathingAnimation();
+      }
+    );
+  }
+}
+
+// =============================================================================
+// GLOBE SETUP & RENDERING
+// =============================================================================
+
+function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
+  const globe = Globe()(document.getElementById("globeViz"))
+    .globeImageUrl("./img/earth-bi.jpg")
+    .backgroundImageUrl("./img/night-sky.png")
+    .backgroundColor(VISUAL_CONFIG.backgroundColor)
+    .atmosphereColor(VISUAL_CONFIG.atmosphereColor)
+    .atmosphereAltitude(VISUAL_CONFIG.atmosphereAltitude)
+    .width(window.innerWidth)
+    .height(window.innerHeight)
+
+    // Grid points + main user only (Points Layer)
+    .pointsData([...gridData.points, ...userLocationData])
+    .pointColor((d) =>
+      d.isUserLocation ? USER_LOCATION_CONFIG.color : VISUAL_CONFIG.pointColor
+    )
+    .pointRadius((d) =>
+      d.isUserLocation ? USER_LOCATION_CONFIG.radius : VISUAL_CONFIG.pointRadius
+    )
+    .pointAltitude((d) =>
+      d.isUserLocation ? USER_LOCATION_CONFIG.altitude : 0
+    )
+    .pointResolution(12)
+
+    // Grid arcs
+    .arcsData(gridData.arcs)
+    .arcColor(() => VISUAL_CONFIG.pointColor)
+    .arcAltitude((d) => d.altitude)
+    .arcStroke(VISUAL_CONFIG.arcStroke)
+    .arcDashLength(VISUAL_CONFIG.arcDashLength)
+    .arcDashGap(VISUAL_CONFIG.arcDashGap)
+
+    // Other users (uses optimized particle system)
+    .particlesData([otherUsersData]) // Wrap in array as particlesData expects array of sets
+    .particlesList((d) => d) // Return particles directly
+    .particleLat("lat")
+    .particleLng("lng")
+    .particleAltitude("altitude")
+    .particlesSize(OTHER_USERS_CONFIG.size)
+    .particlesSizeAttenuation(true)
+    .particlesColor(() => OTHER_USERS_CONFIG.color);
+
+  // Configure tilt and rotation via controls
+  const controls = globe.controls();
+
+  // Tilt globe 23.5 degrees by adjusting camera position
+  controls.object.position.set(0, 0, ZOOM_CONFIG.initialDistance);
+  controls.object.up.set(
+    Math.sin((23.5 * Math.PI) / 180),
+    Math.cos((23.5 * Math.PI) / 180),
+    0
+  );
+
+  // Configure zoom limits
+  controls.minDistance = ZOOM_CONFIG.minDistance;
+  controls.maxDistance = ZOOM_CONFIG.maxDistance;
+
+  controls.update();
+
+  // Enable automatic rotation by default
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.5;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+
+  // Store global instance
+  globeInstance = globe;
+
+  return globe;
+}
+
+// =============================================================================
+// APPLICATION INITIALIZATION
+// =============================================================================
+
 async function initializeGlobe() {
   const gridGenerator = new TriangularGridGenerator();
   const gridData = gridGenerator.generate();
@@ -781,5 +786,4 @@ async function initializeGlobe() {
   }
 }
 
-// Launch initialization
 initializeGlobe();
