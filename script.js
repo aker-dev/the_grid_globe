@@ -32,72 +32,6 @@ const OTHER_USERS_CONFIG = {
   numberOfUsers: 10000,
 };
 
-// Configuration des particules
-// const PARTICLES_CONFIG = {
-//   color: "#e11d48",
-//   size: 0.5,
-//   altitude: 0.1,
-//   numberOfParticles: 1000000, // Peut aller jusqu'à 10 000 000
-//   enabled: true,
-// };
-
-// Zones géographiques des continents pour distribuer les points
-// const CONTINENT_BOUNDS = {
-//   northAmerica: { latMin: 25, latMax: 70, lngMin: -170, lngMax: -50 },
-//   southAmerica: { latMin: -55, latMax: 15, lngMin: -85, lngMax: -35 },
-//   europe: { latMin: 35, latMax: 70, lngMin: -10, lngMax: 50 },
-//   africa: { latMin: -35, latMax: 35, lngMin: -20, lngMax: 55 },
-//   asia: { latMin: 10, latMax: 70, lngMin: 60, lngMax: 150 },
-//   oceania: { latMin: -50, latMax: -10, lngMin: 110, lngMax: 180 },
-// };
-
-// Générateur de particules aléatoires sur les continents
-// class RandomParticlesGenerator {
-//   constructor(config = PARTICLES_CONFIG) {
-//     this.config = config;
-//   }
-
-//   generate() {
-//     const particles = [];
-//     const particlesPerContinent = Math.floor(
-//       this.config.numberOfParticles / Object.keys(CONTINENT_BOUNDS).length
-//     );
-
-//     // Distribuer les particules sur chaque continent
-//     Object.entries(CONTINENT_BOUNDS).forEach(([continent, bounds], index) => {
-//       const isLastContinent =
-//         index === Object.keys(CONTINENT_BOUNDS).length - 1;
-//       const numParticles = isLastContinent
-//         ? this.config.numberOfParticles - particles.length
-//         : particlesPerContinent;
-
-//       for (let i = 0; i < numParticles; i++) {
-//         const lat = this.randomBetween(bounds.latMin, bounds.latMax);
-//         const lng = this.randomBetween(bounds.lngMin, bounds.lngMax);
-
-//         particles.push({
-//           lat,
-//           lng,
-//           continent,
-//           id: `${continent}_${i}`,
-//           altitude: this.config.altitude,
-//         });
-//       }
-//     });
-
-//     console.log(
-//       `🎯 ${particles.length} particules aléatoires générées sur ${
-//         Object.keys(CONTINENT_BOUNDS).length
-//       } continents`
-//     );
-//     return particles;
-//   }
-
-//   randomBetween(min, max) {
-//     return min + Math.random() * (max - min);
-//   }
-// }
-
 // Classe pour générer des utilisateurs simulés dans les zones peuplées
 class PopulatedUsersGenerator {
   constructor(config = OTHER_USERS_CONFIG) {
@@ -448,6 +382,7 @@ function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
   return (
     Globe()(document.getElementById("globeViz"))
       .globeImageUrl("./img/earth-bi.jpg")
+      .backgroundImageUrl("./img/night-sky.png")
       .backgroundColor(VISUAL_CONFIG.backgroundColor)
       .atmosphereColor(VISUAL_CONFIG.atmosphereColor)
       .atmosphereAltitude(VISUAL_CONFIG.atmosphereAltitude)
