@@ -153,8 +153,8 @@ class PopulatedUsersGenerator {
     // Sélectionner une zone selon son poids de population
     const area = this.selectWeightedArea();
 
-    // Générer un point aléatoire dans cette zone
-    return this.generatePointInPolygon(area.geometry.coordinates[0]);
+    // Générer un point aléatoire dans cette zone, évitant les bordures
+    return this.generatePointInPolygonCenter(area.geometry.coordinates[0]);
   }
 
   selectWeightedArea() {
@@ -171,19 +171,25 @@ class PopulatedUsersGenerator {
     return weightedAreas[Math.floor(Math.random() * weightedAreas.length)];
   }
 
-  generatePointInPolygon(coordinates) {
-    // Trouver les limites du polygone
+  generatePointInPolygonCenter(coordinates) {
+    // Trouver le centre géographique du polygone
     const lats = coordinates.map((coord) => coord[1]);
     const lngs = coordinates.map((coord) => coord[0]);
 
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs);
-    const maxLng = Math.max(...lngs);
+    const centerLat = lats.reduce((sum, lat) => sum + lat, 0) / lats.length;
+    const centerLng = lngs.reduce((sum, lng) => sum + lng, 0) / lngs.length;
 
-    // Générer un point aléatoire dans les limites avec distribution gaussienne pour plus de réalisme
-    const lat = this.gaussianRandom(minLat, maxLat, 0.3);
-    const lng = this.gaussianRandom(minLng, maxLng, 0.3);
+    // Calculer la taille de la zone pour déterminer le rayon maximum
+    const latRange = Math.max(...lats) - Math.min(...lats);
+    const lngRange = Math.max(...lngs) - Math.min(...lngs);
+    const maxRadius = Math.min(latRange, lngRange) * 0.4; // 40% de la taille de la zone
+
+    // Générer un point avec distribution radiale depuis le centre
+    const { lat, lng } = this.generateRadialPoint(
+      centerLat,
+      centerLng,
+      maxRadius
+    );
 
     return { lat, lng };
   }
@@ -201,6 +207,63 @@ class PopulatedUsersGenerator {
     // Appliquer la concentration et les limites
     const value = center + gaussian * range * concentration;
     return Math.max(min, Math.min(max, value));
+  }
+
+  // Nouvelle méthode pour distribution radiale depuis un centre
+  generateRadialPoint(centerLat, centerLng, maxRadius) {
+    // Mélange de distribution radiale et de bruit aléatoire pour plus de naturel
+    const useRadial = Math.random() < 0.7; // 70% radial, 30% aléatoire
+
+    if (useRadial) {
+      // Distribution radiale avec variation d'angle
+      const baseAngle = Math.random() * 2 * Math.PI;
+      const angleVariation = (Math.random() - 0.5) * Math.PI * 0.3; // ±27° de variation
+      const angle = baseAngle + angleVariation;
+
+      // Rayon avec plus de variation et moins de concentration stricte
+      const radiusRandom1 = Math.random();
+      const radiusRandom2 = Math.random();
+      // Moyenne de deux valeurs aléatoires pour une distribution plus douce
+      const normalizedRadius = (radiusRandom1 + radiusRandom2) / 2;
+      const radiusVariation = 1 + (Math.random() - 0.5) * 0.4; // ±20% de variation
+      const radius = normalizedRadius * maxRadius * radiusVariation;
+
+      // Conversion en coordonnées avec du bruit additionnel
+      const deltaLat =
+        radius * Math.cos(angle) + (Math.random() - 0.5) * maxRadius * 0.1;
+      const deltaLng =
+        radius * Math.sin(angle) + (Math.random() - 0.5) * maxRadius * 0.1;
+
+      // Ajustement pour la projection sphérique
+      const correctedDeltaLng =
+        deltaLng / Math.cos((centerLat * Math.PI) / 180);
+
+      return {
+        lat: centerLat + deltaLat,
+        lng: centerLng + correctedDeltaLng,
+      };
+    } else {
+      // Distribution complètement aléatoire dans un carré autour du centre
+      const randomLat = centerLat + (Math.random() - 0.5) * maxRadius * 2;
+      const randomLng = centerLng + (Math.random() - 0.5) * maxRadius * 2;
+
+      return {
+        lat: randomLat,
+        lng: randomLng,
+      };
+    }
+  }
+
+  // Nouvelle méthode pour distribution gaussienne autour d'un point central
+  gaussianRandomAroundPoint(center, diffusionRadius) {
+    // Box-Muller transform pour distribution gaussienne
+    const u1 = Math.random();
+    const u2 = Math.random();
+    const gaussian = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+
+    // Appliquer une diffusion très concentrée autour du centre pour éviter les bordures
+    const offset = gaussian * diffusionRadius * 0.5; // Concentration élevée (0.5 au lieu de 0.3)
+    return center + offset;
   }
 
   // Méthode de fallback si les données géographiques ne se chargent pas
