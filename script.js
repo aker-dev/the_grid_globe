@@ -541,6 +541,12 @@ function animateZoomTransition(fromDistance, toDistance, duration, onComplete) {
 function startBreathingAnimation() {
   if (!globeInstance || breathingAnimationId) return;
 
+  // Replace manifestation header text during breathing
+  const manifestationHeader = document.getElementById("manifestation-header");
+  if (manifestationHeader) {
+    manifestationHeader.textContent = "HERE~NOW";
+  }
+
   const controls = globeInstance.controls();
   // Use maxDistance as base for breathing animation
   const baseDistance = ZOOM_CONFIG.maxDistance;
@@ -633,6 +639,12 @@ function stopBreathingAnimation() {
   if (breathingAnimationId) {
     cancelAnimationFrame(breathingAnimationId);
     breathingAnimationId = null;
+  }
+
+  // Restore manifestation header text when breathing stops
+  const manifestationHeader = document.getElementById("manifestation-header");
+  if (manifestationHeader) {
+    manifestationHeader.textContent = "NEXT~MANIFESTATION~IN";
   }
 
   // Restore countdown display
