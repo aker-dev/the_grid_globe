@@ -379,49 +379,76 @@ class TriangularGridGenerator {
 
 // Globe setup function
 function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
-  return (
-    Globe()(document.getElementById("globeViz"))
-      .globeImageUrl("./img/earth-bi.jpg")
-      .backgroundImageUrl("./img/night-sky.png")
-      .backgroundColor(VISUAL_CONFIG.backgroundColor)
-      .atmosphereColor(VISUAL_CONFIG.atmosphereColor)
-      .atmosphereAltitude(VISUAL_CONFIG.atmosphereAltitude)
-      .width(window.innerWidth)
-      .height(window.innerHeight)
+  const globe = Globe()(document.getElementById("globeViz"))
+    .globeImageUrl("./img/earth-bi.jpg")
+    .backgroundImageUrl("./img/night-sky.png")
+    .backgroundColor(VISUAL_CONFIG.backgroundColor)
+    .atmosphereColor(VISUAL_CONFIG.atmosphereColor)
+    .atmosphereAltitude(VISUAL_CONFIG.atmosphereAltitude)
+    .width(window.innerWidth)
+    .height(window.innerHeight)
 
-      // Points de la grille + utilisateur principal uniquement (Points Layer)
-      .pointsData([...gridData.points, ...userLocationData])
-      .pointColor((d) =>
-        d.isUserLocation ? USER_LOCATION_CONFIG.color : VISUAL_CONFIG.pointColor
-      )
-      .pointRadius((d) =>
-        d.isUserLocation
-          ? USER_LOCATION_CONFIG.radius
-          : VISUAL_CONFIG.pointRadius
-      )
-      .pointAltitude((d) =>
-        d.isUserLocation ? USER_LOCATION_CONFIG.altitude : 0
-      )
-      .pointResolution(12)
+    // Points de la grille + utilisateur principal uniquement (Points Layer)
+    .pointsData([...gridData.points, ...userLocationData])
+    .pointColor((d) =>
+      d.isUserLocation ? USER_LOCATION_CONFIG.color : VISUAL_CONFIG.pointColor
+    )
+    .pointRadius((d) =>
+      d.isUserLocation
+        ? USER_LOCATION_CONFIG.radius
+        : VISUAL_CONFIG.pointRadius
+    )
+    .pointAltitude((d) =>
+      d.isUserLocation ? USER_LOCATION_CONFIG.altitude : 0
+    )
+    .pointResolution(12)
 
-      // Arcs de la grille
-      .arcsData(gridData.arcs)
-      .arcColor(() => VISUAL_CONFIG.pointColor)
-      .arcAltitude((d) => d.altitude)
-      .arcStroke(VISUAL_CONFIG.arcStroke)
-      .arcDashLength(VISUAL_CONFIG.arcDashLength)
-      .arcDashGap(VISUAL_CONFIG.arcDashGap)
+    // Arcs de la grille
+    .arcsData(gridData.arcs)
+    .arcColor(() => VISUAL_CONFIG.pointColor)
+    .arcAltitude((d) => d.altitude)
+    .arcStroke(VISUAL_CONFIG.arcStroke)
+    .arcDashLength(VISUAL_CONFIG.arcDashLength)
+    .arcDashGap(VISUAL_CONFIG.arcDashGap)
 
-      // Autres utilisateurs (utilise le système de particules optimisé)
-      .particlesData([otherUsersData]) // Enveloppe dans un array car particlesData attend un array de sets
-      .particlesList((d) => d) // Retourne directement les particules
-      .particleLat("lat")
-      .particleLng("lng")
-      .particleAltitude("altitude")
-      .particlesSize(OTHER_USERS_CONFIG.size)
-      .particlesSizeAttenuation(true)
-      .particlesColor(() => OTHER_USERS_CONFIG.color)
-  );
+    // Autres utilisateurs (utilise le système de particules optimisé)
+    .particlesData([otherUsersData]) // Enveloppe dans un array car particlesData attend un array de sets
+    .particlesList((d) => d) // Retourne directement les particules
+    .particleLat("lat")
+    .particleLng("lng")
+    .particleAltitude("altitude")
+    .particlesSize(OTHER_USERS_CONFIG.size)
+    .particlesSizeAttenuation(true)
+    .particlesColor(() => OTHER_USERS_CONFIG.color);
+
+  // Configuration de l'inclinaison et rotation via les controls
+  const controls = globe.controls();
+  
+  // Incliner le globe de 23.5 degrés en ajustant la position de la caméra
+  controls.object.position.set(0, 0, 260);
+  controls.object.up.set(Math.sin(23.5 * Math.PI / 180), Math.cos(23.5 * Math.PI / 180), 0);
+  controls.update();
+  
+  // Animation de rotation automatique du globe
+  let rotationSpeed = 0.002; // Vitesse de rotation
+  
+  const animateRotation = () => {
+    // Faire tourner automatiquement le globe en ajustant l'azimuth des controls
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5; // Vitesse en degrés par seconde
+    controls.update();
+    requestAnimationFrame(animateRotation);
+  };
+  
+  // Activer la rotation automatique
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.5;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  
+  animateRotation();
+
+  return globe;
 }
 
 // Classe pour gérer la géolocalisation de l'utilisateur
