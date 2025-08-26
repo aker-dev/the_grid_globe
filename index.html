@@ -6,20 +6,17 @@
     <title>THE~GRID</title>
     <!-- Tailwind CSS 4 -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- <script>
+    <script>
       tailwind.config = {
         theme: {
           extend: {
-            fontFamily: {
-              mono: ["Monaco", "Menlo", "Ubuntu Mono", "monospace"],
-            },
             animation: {
               "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
             },
           },
         },
       };
-    </script> -->
+    </script>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body class="overflow-hidden" style="color: #f8ed43">
@@ -41,7 +38,7 @@
 
         <!-- Center heart -->
         <div class="flex-1 flex items-center justify-center">
-          <div class="text-6xl sm:text-7xl md:text-8xl animate-pulse">
+          <div class="text-6xl sm:text-7xl md:text-8xl animate-pulse-slow">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
