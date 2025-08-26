@@ -1,8 +1,8 @@
 // Configuration constants
 const GRID_CONFIG = {
-  altitude: 0.1,
-  latDivisions: 8,
-  lngDivisions: 12,
+  altitude: 0,
+  latDivisions: 12,
+  lngDivisions: 24,
   tolerance: 0.1,
 };
 
@@ -15,6 +15,13 @@ const VISUAL_CONFIG = {
   backgroundColor: "#f5f5f4",
   atmosphereColor: "#d4d4d4",
   atmosphereAltitude: 0.5,
+};
+
+// Configuration pour la géolocalisation de l'utilisateur
+const USER_LOCATION_CONFIG = {
+  color: "#ef4444", // Rouge
+  radius: 0.8,
+  altitude: 0,
 };
 
 // Configuration des particules
@@ -240,7 +247,7 @@ class TriangularGridGenerator {
 }
 
 // Globe setup function
-function createGlobe(gridData, particlesData) {
+function createGlobe(gridData, userLocationData = []) {
   return (
     Globe()(document.getElementById("globeViz"))
       .globeImageUrl("./img/earth-light.jpg")
@@ -251,10 +258,18 @@ function createGlobe(gridData, particlesData) {
       .height(window.innerHeight)
 
       // Points de la grille (utilise la couche Points Layer)
-      .pointsData(gridData.points)
-      .pointColor(() => VISUAL_CONFIG.pointColor)
-      .pointRadius(VISUAL_CONFIG.pointRadius)
-      .pointAltitude(0)
+      .pointsData([...gridData.points, ...userLocationData])
+      .pointColor((d) =>
+        d.isUserLocation ? USER_LOCATION_CONFIG.color : VISUAL_CONFIG.pointColor
+      )
+      .pointRadius((d) =>
+        d.isUserLocation
+          ? USER_LOCATION_CONFIG.radius
+          : VISUAL_CONFIG.pointRadius
+      )
+      .pointAltitude((d) =>
+        d.isUserLocation ? USER_LOCATION_CONFIG.altitude : 0
+      )
       .pointResolution(12)
 
       // Arcs de la grille
@@ -277,6 +292,103 @@ function createGlobe(gridData, particlesData) {
   );
 }
 
+// Classe pour gérer la géolocalisation de l'utilisateur
+class UserLocationManager {
+  constructor() {
+    this.userLocation = null;
+    this.isLocationSupported = "geolocation" in navigator;
+  }
+
+  async getUserLocation() {
+    if (!this.isLocationSupported) {
+      console.warn("🌍 Géolocalisation non supportée par ce navigateur");
+      return null;
+    }
+
+    return new Promise((resolve, reject) => {
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000, // 5 minutes
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            id: "user_location",
+            isUserLocation: true, // Flag pour identifier la position de l'utilisateur
+          };
+
+          this.userLocation = location;
+          console.log(
+            `🎯 Position de l'utilisateur trouvée: ${location.lat.toFixed(
+              4
+            )}, ${location.lng.toFixed(4)} (précision: ${location.accuracy}m)`
+          );
+          resolve([location]);
+        },
+        (error) => {
+          let errorMessage = "";
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage =
+                "Permission de géolocalisation refusée par l'utilisateur";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Informations de position non disponibles";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "Délai d'attente de géolocalisation dépassé";
+              break;
+            default:
+              errorMessage = "Erreur de géolocalisation inconnue";
+              break;
+          }
+          console.warn(`🌍 ${errorMessage}`);
+          reject(error);
+        },
+        options
+      );
+    });
+  }
+
+  async initializeLocation(globe, gridData) {
+    try {
+      const userLocationData = await this.getUserLocation();
+
+      if (userLocationData && userLocationData.length > 0) {
+        // Combiner les points de la grille avec la position de l'utilisateur
+        const allPoints = [...gridData.points, ...userLocationData];
+
+        // Mettre à jour le globe avec tous les points
+        globe.pointsData(allPoints);
+
+        // Centrer la vue sur la position de l'utilisateur
+        globe.pointOfView(
+          {
+            lat: userLocationData[0].lat,
+            lng: userLocationData[0].lng,
+            altitude: 2.5,
+          },
+          2000
+        );
+
+        return userLocationData;
+      }
+    } catch (error) {
+      console.error(
+        "Erreur lors de l'initialisation de la géolocalisation:",
+        error
+      );
+    }
+
+    return [];
+  }
+}
+
 // Main execution
 const gridGenerator = new TriangularGridGenerator();
 const gridData = gridGenerator.generate();
@@ -285,6 +397,9 @@ const gridData = gridGenerator.generate();
 // const particlesGenerator = new RandomParticlesGenerator();
 // const particles = particlesGenerator.generate();
 
-// Créer le globe avec grille et particules
-// const world = createGlobe(gridData, particles);
+// Créer le globe avec grille
 const world = createGlobe(gridData);
+
+// Initialiser la géolocalisation de l'utilisateur
+const locationManager = new UserLocationManager();
+locationManager.initializeLocation(world, gridData);
