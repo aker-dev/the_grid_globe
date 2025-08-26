@@ -51,9 +51,9 @@ const ZOOM_CONFIG = {
   transitionDuration: 1000, // Transition duration between zoom levels (ms)
   // Breathing timing in seconds
   breathingTiming: {
-    inspire: 3, // Inspiration in seconds
+    inspire: 4, // Inspiration in seconds
     pause: 2, // Pause/retention in seconds
-    expire: 3, // Expiration in seconds
+    expire: 6, // Expiration in seconds
   },
   pauseMicroAmplitude: 0.005, // Mini amplitude for pause animation (2% variation)
 };
