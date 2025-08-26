@@ -377,6 +377,93 @@ class TriangularGridGenerator {
   }
 }
 
+// Variables globales pour la gestion de l'animation
+let globeInstance = null;
+let isBreathingMode = false;
+let breathingAnimationId = null;
+
+// Fonction d'easing pour l'animation de respiration
+function easeInOutQuad(t) {
+  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+}
+
+// Animation de respiration cohérence cardiaque (4-2-6 secondes)
+function startBreathingAnimation() {
+  if (!globeInstance || breathingAnimationId) return;
+
+  const controls = globeInstance.controls();
+  const baseDistance = controls.object.position.length();
+  const breathAmplitude = baseDistance * 0.3; // 10% de variation
+
+  let startTime = performance.now();
+  const cycleDuration = 12000; // 4+2+6 = 12 secondes par cycle
+
+  function animateBreathing(currentTime) {
+    if (!isBreathingMode) return;
+
+    const elapsed = (currentTime - startTime) % cycleDuration;
+    let progress = 0;
+
+    if (elapsed <= 4000) {
+      // Inspiration (4 secondes)
+      progress = easeInOutQuad(elapsed / 4000);
+    } else if (elapsed <= 6000) {
+      // Rétention (2 secondes) - maintenir l'inspiration
+      progress = 1;
+    } else {
+      // Expiration (6 secondes)
+      progress = 1 - easeInOutQuad((elapsed - 6000) / 6000);
+    }
+
+    // Ajuster la distance de la caméra
+    const currentDistance = baseDistance + breathAmplitude * progress;
+    const direction = controls.object.position.clone().normalize();
+    controls.object.position.copy(direction.multiplyScalar(currentDistance));
+    controls.update();
+
+    breathingAnimationId = requestAnimationFrame(animateBreathing);
+  }
+
+  breathingAnimationId = requestAnimationFrame(animateBreathing);
+}
+
+// Arrêter l'animation de respiration
+function stopBreathingAnimation() {
+  if (breathingAnimationId) {
+    cancelAnimationFrame(breathingAnimationId);
+    breathingAnimationId = null;
+  }
+
+  // Retourner à la distance normale
+  if (globeInstance) {
+    const controls = globeInstance.controls();
+    const baseDistance = 260; // Distance de base
+    const direction = controls.object.position.clone().normalize();
+    controls.object.position.copy(direction.multiplyScalar(baseDistance));
+    controls.update();
+  }
+}
+
+// Basculer entre rotation et respiration
+function toggleGlobeMode() {
+  if (!globeInstance) return;
+
+  const controls = globeInstance.controls();
+
+  if (isBreathingMode) {
+    // Retour au mode rotation
+    isBreathingMode = false;
+    stopBreathingAnimation();
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+  } else {
+    // Mode respiration
+    isBreathingMode = true;
+    controls.autoRotate = false;
+    startBreathingAnimation();
+  }
+}
+
 // Globe setup function
 function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
   const globe = Globe()(document.getElementById("globeViz"))
@@ -394,9 +481,7 @@ function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
       d.isUserLocation ? USER_LOCATION_CONFIG.color : VISUAL_CONFIG.pointColor
     )
     .pointRadius((d) =>
-      d.isUserLocation
-        ? USER_LOCATION_CONFIG.radius
-        : VISUAL_CONFIG.pointRadius
+      d.isUserLocation ? USER_LOCATION_CONFIG.radius : VISUAL_CONFIG.pointRadius
     )
     .pointAltitude((d) =>
       d.isUserLocation ? USER_LOCATION_CONFIG.altitude : 0
@@ -423,30 +508,24 @@ function createGlobe(gridData, userLocationData = [], otherUsersData = []) {
 
   // Configuration de l'inclinaison et rotation via les controls
   const controls = globe.controls();
-  
+
   // Incliner le globe de 23.5 degrés en ajustant la position de la caméra
   controls.object.position.set(0, 0, 260);
-  controls.object.up.set(Math.sin(23.5 * Math.PI / 180), Math.cos(23.5 * Math.PI / 180), 0);
+  controls.object.up.set(
+    Math.sin((23.5 * Math.PI) / 180),
+    Math.cos((23.5 * Math.PI) / 180),
+    0
+  );
   controls.update();
-  
-  // Animation de rotation automatique du globe
-  let rotationSpeed = 0.002; // Vitesse de rotation
-  
-  const animateRotation = () => {
-    // Faire tourner automatiquement le globe en ajustant l'azimuth des controls
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.5; // Vitesse en degrés par seconde
-    controls.update();
-    requestAnimationFrame(animateRotation);
-  };
-  
-  // Activer la rotation automatique
+
+  // Activer la rotation automatique par défaut
   controls.autoRotate = true;
   controls.autoRotateSpeed = 0.5;
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
-  
-  animateRotation();
+
+  // Stocker l'instance globale
+  globeInstance = globe;
 
   return globe;
 }
@@ -563,6 +642,12 @@ async function initializeGlobe() {
   // Initialiser la géolocalisation de l'utilisateur
   const locationManager = new UserLocationManager();
   locationManager.initializeLocation(world, gridData);
+
+  // Ajouter l'événement de clic sur le coeur
+  const heartButton = document.getElementById("heart-button");
+  if (heartButton) {
+    heartButton.addEventListener("click", toggleGlobeMode);
+  }
 }
 
 // Lancer l'initialisation
