@@ -53,10 +53,10 @@ const ZOOM_CONFIG = {
   preBreathingCountdown: {
     stepDuration: 2000, // 2 seconds per step (in milliseconds)
     steps: [
-      { number: "3…", text: "Sit in a comfortable position" },
-      { number: "2…", text: "Try to be not disturbed" },
-      { number: "1…", text: "And breathe" }
-    ]
+      { number: "3", text: "Sit in a comfortable position" },
+      { number: "2", text: "Try to be not disturbed" },
+      { number: "1", text: "And breathe" },
+    ],
   },
   // Breathing timing in seconds
   breathingTiming: {
@@ -527,17 +527,17 @@ function startPreBreathingCountdown(onComplete) {
 
   const countdownSteps = ZOOM_CONFIG.preBreathingCountdown.steps;
   const stepDuration = ZOOM_CONFIG.preBreathingCountdown.stepDuration;
-  
+
   let currentStep = 0;
 
   // Get header elements
   const h1Element = document.querySelector("h1");
   const h2Element = document.querySelector("h2");
-  
+
   // Save original content
   let originalH1Content = null;
   let originalH2Content = null;
-  
+
   if (h1Element && originalH1Content === null) {
     originalH1Content = h1Element.textContent;
   }
@@ -553,12 +553,12 @@ function startPreBreathingCountdown(onComplete) {
     }
 
     const step = countdownSteps[currentStep];
-    
+
     // Update header elements with countdown content
     if (h1Element) {
       h1Element.textContent = step.number;
     }
-    
+
     if (h2Element) {
       h2Element.textContent = step.text;
     }
@@ -722,11 +722,11 @@ function stopBreathingAnimation() {
   // Restore original header content
   const h1Element = document.querySelector("h1");
   const h2Element = document.querySelector("h2");
-  
+
   if (h1Element && window.originalH1Content) {
     h1Element.textContent = window.originalH1Content;
   }
-  
+
   if (h2Element && window.originalH2Content) {
     h2Element.textContent = window.originalH2Content;
   }
