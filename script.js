@@ -22,139 +22,59 @@ const PARTICLES_CONFIG = {
   color: "#e11d48",
   size: 1,
   altitude: 0.1,
-  numberOfParticles: 50000, // Réduit pour les tests avec vérification précise
+  numberOfParticles: 10000, // Peut aller jusqu'à 10 000 000
   enabled: true,
 };
 
-// Variable globale pour stocker les données GeoJSON
-let LAND_POLYGONS = null;
+// Zones géographiques des continents pour distribuer les points
+const CONTINENT_BOUNDS = {
+  northAmerica: { latMin: 25, latMax: 70, lngMin: -170, lngMax: -50 },
+  southAmerica: { latMin: -55, latMax: 15, lngMin: -85, lngMax: -35 },
+  europe: { latMin: 35, latMax: 70, lngMin: -10, lngMax: 50 },
+  africa: { latMin: -35, latMax: 35, lngMin: -20, lngMax: 55 },
+  asia: { latMin: 10, latMax: 70, lngMin: 60, lngMax: 150 },
+  oceania: { latMin: -50, latMax: -10, lngMin: 110, lngMax: 180 },
+};
 
-// Fonction pour charger les données GeoJSON
-async function loadLandPolygons() {
-  try {
-    const response = await fetch("./data/ne_110m_land.geojson");
-    const geoData = await response.json();
-    LAND_POLYGONS = geoData.features;
-    console.log(
-      `🌍 ${LAND_POLYGONS.length} polygones terrestres chargés depuis ne_110m_land.geojson`
-    );
-    return LAND_POLYGONS;
-  } catch (error) {
-    console.error("❌ Erreur lors du chargement des données GeoJSON:", error);
-    return null;
-  }
-}
-
-// Algorithme de ray-casting pour vérifier si un point est dans un polygone
-function pointInPolygon(point, polygon) {
-  const [x, y] = point;
-  let inside = false;
-
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const [xi, yi] = polygon[i];
-    const [xj, yj] = polygon[j];
-
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
-      inside = !inside;
-    }
-  }
-
-  return inside;
-}
-
-// Fonction pour vérifier si un point (lat, lng) est sur terre
-function isPointOnLand(lat, lng) {
-  if (!LAND_POLYGONS) {
-    console.warn(
-      "⚠️ Données GeoJSON non chargées, utilisation des zones approximatives"
-    );
-    return false;
-  }
-
-  const point = [lng, lat]; // GeoJSON utilise [longitude, latitude]
-
-  // Vérifier chaque feature (polygone de terre)
-  for (const feature of LAND_POLYGONS) {
-    const geometry = feature.geometry;
-
-    if (geometry.type === "Polygon") {
-      // Polygon simple
-      const coordinates = geometry.coordinates[0]; // Premier ring (extérieur)
-      if (pointInPolygon(point, coordinates)) {
-        return true;
-      }
-    } else if (geometry.type === "MultiPolygon") {
-      // MultiPolygon (plusieurs polygones)
-      for (const polygonCoords of geometry.coordinates) {
-        const coordinates = polygonCoords[0]; // Premier ring de chaque polygone
-        if (pointInPolygon(point, coordinates)) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
-}
-
-// Générateur de particules aléatoires sur les terres émergées
+// Générateur de particules aléatoires sur les continents
 class RandomParticlesGenerator {
   constructor(config = PARTICLES_CONFIG) {
     this.config = config;
   }
 
-  async generate() {
-    // S'assurer que les données GeoJSON sont chargées
-    if (!LAND_POLYGONS) {
-      await loadLandPolygons();
-    }
-
-    if (!LAND_POLYGONS) {
-      console.error(
-        "❌ Impossible de charger les données GeoJSON, génération abandonnée"
-      );
-      return [];
-    }
-
+  generate() {
     const particles = [];
-    const maxAttempts = this.config.numberOfParticles * 10; // Limite pour éviter une boucle infinie
-    let attempts = 0;
-
-    console.log(
-      `🎯 Génération de ${this.config.numberOfParticles} particules sur les terres émergées...`
+    const particlesPerContinent = Math.floor(
+      this.config.numberOfParticles / Object.keys(CONTINENT_BOUNDS).length
     );
 
-    while (
-      particles.length < this.config.numberOfParticles &&
-      attempts < maxAttempts
-    ) {
-      // Générer des coordonnées aléatoires sur toute la planète
-      const lat = this.randomBetween(-90, 90);
-      const lng = this.randomBetween(-180, 180);
+    // Distribuer les particules sur chaque continent
+    Object.entries(CONTINENT_BOUNDS).forEach(([continent, bounds], index) => {
+      const isLastContinent =
+        index === Object.keys(CONTINENT_BOUNDS).length - 1;
+      const numParticles = isLastContinent
+        ? this.config.numberOfParticles - particles.length
+        : particlesPerContinent;
 
-      // Vérifier si le point est sur terre en utilisant les données GeoJSON précises
-      if (isPointOnLand(lat, lng)) {
+      for (let i = 0; i < numParticles; i++) {
+        const lat = this.randomBetween(bounds.latMin, bounds.latMax);
+        const lng = this.randomBetween(bounds.lngMin, bounds.lngMax);
+
         particles.push({
           lat,
           lng,
-          id: `land_particle_${particles.length}`,
+          continent,
+          id: `${continent}_${i}`,
           altitude: this.config.altitude,
         });
       }
-
-      attempts++;
-    }
+    });
 
     console.log(
-      `✅ ${particles.length} particules générées sur les terres émergées (${attempts} tentatives)`
+      `🎯 ${particles.length} particules aléatoires générées sur ${
+        Object.keys(CONTINENT_BOUNDS).length
+      } continents`
     );
-
-    if (particles.length < this.config.numberOfParticles) {
-      console.warn(
-        `⚠️ Seulement ${particles.length}/${this.config.numberOfParticles} particules générées`
-      );
-    }
-
     return particles;
   }
 
@@ -357,33 +277,13 @@ function createGlobe(gridData, particlesData) {
   );
 }
 
-// Fonction principale asynchrone
-async function initializeGlobe() {
-  try {
-    // Charger les données GeoJSON
-    console.log("🌍 Chargement des données géographiques...");
-    await loadLandPolygons();
+// Main execution
+const gridGenerator = new TriangularGridGenerator();
+const gridData = gridGenerator.generate();
 
-    // Générer la grille
-    console.log("📐 Génération de la grille triangulaire...");
-    const gridGenerator = new TriangularGridGenerator();
-    const gridData = gridGenerator.generate();
+// Générer les particules
+const particlesGenerator = new RandomParticlesGenerator();
+const particles = particlesGenerator.generate();
 
-    // Générer les particules (maintenant asynchrone)
-    console.log("🎯 Génération des particules sur les terres émergées...");
-    const particlesGenerator = new RandomParticlesGenerator();
-    const particles = await particlesGenerator.generate();
-
-    // Créer le globe avec grille et particules
-    console.log("🌐 Création du globe...");
-    const world = createGlobe(gridData, particles);
-
-    console.log("✅ Globe initialisé avec succès !");
-    return world;
-  } catch (error) {
-    console.error("❌ Erreur lors de l'initialisation du globe:", error);
-  }
-}
-
-// Lancer l'initialisation
-initializeGlobe();
+// Créer le globe avec grille et particules
+const world = createGlobe(gridData, particles);
