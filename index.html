@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>THE~GRID</title>
+
     <!-- Tailwind CSS 4 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -11,34 +12,35 @@
         theme: {
           extend: {
             animation: {
-              "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+              "pulse-slow": "pulse 6s cubic-bezier(0.4, 0, 0.6, 1) infinite",
             },
           },
         },
       };
     </script>
-    <link rel="stylesheet" href="style.css" />
   </head>
+
   <body class="overflow-hidden" style="color: #f8ed43">
     <!-- Main container with overlay content -->
     <div class="relative w-screen h-screen">
       <!-- Globe container -->
-      <div id="globeViz" class="absolute inset-0"></div>
+      <div id="globeViz" class="absolute z-1 inset-0"></div>
 
       <!-- Overlay content -->
       <div
-        class="absolute inset-0 flex flex-col justify-between items-center p-6 sm:p-8 pointer-events-none"
+        class="absolute z-1000 inset-0 flex flex-col justify-between items-center p-6 pointer-events-none"
       >
         <!-- Header -->
         <div class="flex-shrink-0 text-center mt-8 sm:mt-12">
-          <h1 class="text-5xl sm:text-4xl md:text-5xl font-bold tracking-wider">
-            THE~GRID
+          <h1 class="text-5xl font-bold tracking-wider">THE~GRID</h1>
+          <h1 class="text-2xl font-bold tracking-wider">
+            MANISFESTATION~STATION
           </h1>
         </div>
 
         <!-- Center heart -->
         <div class="flex-1 flex items-center justify-center">
-          <div class="text-6xl sm:text-7xl md:text-8xl animate-pulse-slow">
+          <div class="">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -53,13 +55,8 @@
         </div>
 
         <!-- Footer with time -->
-        <div class="flex-shrink-0 text-center mb-8 sm:mb-12">
-          <div
-            id="time-display"
-            class="text-2xl sm:text-3xl md:text-4xl font-mono tracking-wider"
-          >
-            12:21:21
-          </div>
+        <div class="flex-shrink-0 text-center mb-8">
+          <div id="time-display" class="text-3xl tracking-wider">12:21:21</div>
         </div>
       </div>
     </div>

@@ -14,7 +14,7 @@ const VISUAL_CONFIG = {
   arcDashGap: 0.02, // Espacement entre les segments
   backgroundColor: "#A1A39A",
   atmosphereColor: "#F8ED43",
-  atmosphereAltitude: 0.25,
+  atmosphereAltitude: 0.5,
 };
 
 // Configuration pour la géolocalisation de l'utilisateur
