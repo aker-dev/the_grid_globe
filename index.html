@@ -1,18 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Globe Visualizer</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <!-- Container for the globe -->
-    <div id="globeViz"></div>
-    
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>THE~GRID</title>
+    <!-- Tailwind CSS 4 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              mono: ["Monaco", "Menlo", "Ubuntu Mono", "monospace"],
+            },
+            animation: {
+              "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+            },
+          },
+        },
+      };
+    </script> -->
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="bg-black text-black overflow-hidden">
+    <!-- Main container with overlay content -->
+    <div class="relative w-screen h-screen">
+      <!-- Globe container -->
+      <div id="globeViz" class="absolute inset-0"></div>
+
+      <!-- Overlay content -->
+      <div
+        class="absolute inset-0 flex flex-col justify-between items-center p-6 sm:p-8 pointer-events-none"
+      >
+        <!-- Header -->
+        <div class="flex-shrink-0 text-center mt-8 sm:mt-12">
+          <h1 class="text-5xl sm:text-4xl md:text-5xl font-bold tracking-wider">
+            THE~GRID
+          </h1>
+        </div>
+
+        <!-- Center heart -->
+        <div class="flex-1 flex items-center justify-center">
+          <div class="text-6xl sm:text-7xl md:text-8xl animate-pulse">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              class="size-24"
+            >
+              <path
+                d="m11.645 20.91-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.219l-.022.012-.007.004-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z"
+              />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Footer with time -->
+        <div class="flex-shrink-0 text-center mb-8 sm:mb-12">
+          <div
+            id="time-display"
+            class="text-2xl sm:text-3xl md:text-4xl font-mono tracking-wider"
+          >
+            12:21:21
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Globe.gl library -->
     <script src="https://unpkg.com/globe.gl"></script>
     <!-- Main script -->
     <script src="script.js"></script>
-</body>
+
+    <!-- Countdown script -->
+    <script>
+      function updateCountdown() {
+        const now = new Date();
+        const today = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate()
+        );
+        const targetTime = new Date(
+          today.getTime() + 23 * 60 * 60 * 1000 + 1 * 60 * 1000
+        ); // 23:01 today
+
+        // If we've passed 23:01 today, set target to 23:01 tomorrow
+        if (now > targetTime) {
+          targetTime.setDate(targetTime.getDate() + 1);
+        }
+
+        const timeDiff = targetTime - now;
+
+        if (timeDiff <= 0) {
+          document.getElementById("time-display").textContent = "00:00:00";
+          return;
+        }
+
+        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+
+        const countdownString = `${hours.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+        document.getElementById("time-display").textContent = countdownString;
+      }
+
+      // Update countdown every second
+      setInterval(updateCountdown, 1000);
+      updateCountdown(); // Initial call
+    </script>
+  </body>
 </html>
