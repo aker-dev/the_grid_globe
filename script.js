@@ -398,6 +398,7 @@ let globeInstance = null;
 let isBreathingMode = false;
 let breathingAnimationId = null;
 let zoomTransitionId = null;
+let originalCountdownContent = null;
 
 // Fonction d'easing pour l'animation de respiration
 function easeInOutQuad(t) {
@@ -471,9 +472,13 @@ function startBreathingAnimation() {
     const elapsed = (currentTime - startTime) % cycleDuration;
     let progress = 0;
 
+    // Déterminer la phase actuelle et mettre à jour l'affichage
+    let currentPhase = '';
+    
     if (elapsed <= inspireDuration) {
       // Phase d'inspiration - se rapprocher
       progress = easeInOutQuad(elapsed / inspireDuration);
+      currentPhase = 'INHALE';
     } else if (elapsed <= inspireDuration + pauseDuration) {
       // Phase de rétention avec mini animation
       const pauseElapsed = elapsed - inspireDuration;
@@ -485,11 +490,16 @@ function startBreathingAnimation() {
         Math.sin(microCycle * Math.PI * 2) * ZOOM_CONFIG.pauseMicroAmplitude;
 
       progress = 1 + microVariation;
+      currentPhase = 'PAUSE';
     } else {
       // Phase d'expiration - s'éloigner
       const expireElapsed = elapsed - inspireDuration - pauseDuration;
       progress = 1 - easeInOutQuad(expireElapsed / expireDuration);
+      currentPhase = 'EXHALE';
     }
+    
+    // Mettre à jour l'affichage de la phase de respiration
+    updateBreathingDisplay(currentPhase);
 
     // Ajuster la distance de la caméra (inspiration = se rapprocher du globe)
     const currentDistance = baseDistance - breathAmplitude * progress;
@@ -503,12 +513,37 @@ function startBreathingAnimation() {
   breathingAnimationId = requestAnimationFrame(animateBreathing);
 }
 
+// Fonction pour mettre à jour l'affichage de la phase de respiration
+function updateBreathingDisplay(phase) {
+  const timeDisplay = document.getElementById('time-display');
+  if (timeDisplay) {
+    // Sauvegarder le contenu original la première fois
+    if (originalCountdownContent === null) {
+      originalCountdownContent = timeDisplay.textContent;
+    }
+    timeDisplay.textContent = phase;
+  }
+}
+
+// Fonction pour restaurer l'affichage du countdown
+function restoreCountdownDisplay() {
+  const timeDisplay = document.getElementById('time-display');
+  if (timeDisplay && originalCountdownContent !== null) {
+    // Ne pas restaurer le contenu original car le countdown continue
+    // Laisser le script de countdown reprendre le contrôle naturellement
+    originalCountdownContent = null;
+  }
+}
+
 // Arrêter l'animation de respiration
 function stopBreathingAnimation() {
   if (breathingAnimationId) {
     cancelAnimationFrame(breathingAnimationId);
     breathingAnimationId = null;
   }
+
+  // Restaurer l'affichage du countdown
+  restoreCountdownDisplay();
 
   // Retourner à la distance normale
   if (globeInstance) {
