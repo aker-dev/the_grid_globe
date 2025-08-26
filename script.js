@@ -1,14 +1,14 @@
 // Configuration constants
 const GRID_CONFIG = {
-  altitude: 0.04,
+  altitude: 0.1,
   latDivisions: 8,
-  lngDivisions: 16,
+  lngDivisions: 12,
   tolerance: 0.1,
 };
 
 const VISUAL_CONFIG = {
   pointColor: "#404040",
-  pointRadius: 0.4,
+  pointRadius: 0.2,
   arcStroke: 0.1,
   arcDashLength: 0.05, // Longueur des segments pointillés
   arcDashGap: 0.02, // Espacement entre les segments
@@ -17,16 +17,12 @@ const VISUAL_CONFIG = {
   atmosphereAltitude: 0.5,
 };
 
-const colorInterpolator = (t) => `rgba(255,100,50,${Math.sqrt(1 - t)})`;
-
-// Configuration des anneaux pulsants
-const RINGS_CONFIG = {
+// Configuration des particules
+const PARTICLES_CONFIG = {
   color: "#e11d48",
-  maxRadius: 3,
-  propagationSpeed: 0.5, // degrés par seconde
-  repeatPeriod: 500, // ms entre chaque anneau
-  altitude: 0.01,
-  numberOfRings: 100,
+  size: 1,
+  altitude: 0.1,
+  numberOfParticles: 10000, // Peut aller jusqu'à 10 000 000
   enabled: true,
 };
 
@@ -40,45 +36,46 @@ const CONTINENT_BOUNDS = {
   oceania: { latMin: -50, latMax: -10, lngMin: 110, lngMax: 180 },
 };
 
-// Générateur de points aléatoires sur les continents
-class RandomPointsGenerator {
-  constructor(config = RINGS_CONFIG) {
+// Générateur de particules aléatoires sur les continents
+class RandomParticlesGenerator {
+  constructor(config = PARTICLES_CONFIG) {
     this.config = config;
   }
 
   generate() {
-    const points = [];
-    const pointsPerContinent = Math.floor(
-      this.config.numberOfRings / Object.keys(CONTINENT_BOUNDS).length
+    const particles = [];
+    const particlesPerContinent = Math.floor(
+      this.config.numberOfParticles / Object.keys(CONTINENT_BOUNDS).length
     );
 
-    // Distribuer les points sur chaque continent
+    // Distribuer les particules sur chaque continent
     Object.entries(CONTINENT_BOUNDS).forEach(([continent, bounds], index) => {
       const isLastContinent =
         index === Object.keys(CONTINENT_BOUNDS).length - 1;
-      const numPoints = isLastContinent
-        ? this.config.numberOfRings - points.length
-        : pointsPerContinent;
+      const numParticles = isLastContinent
+        ? this.config.numberOfParticles - particles.length
+        : particlesPerContinent;
 
-      for (let i = 0; i < numPoints; i++) {
+      for (let i = 0; i < numParticles; i++) {
         const lat = this.randomBetween(bounds.latMin, bounds.latMax);
         const lng = this.randomBetween(bounds.lngMin, bounds.lngMax);
 
-        points.push({
+        particles.push({
           lat,
           lng,
           continent,
           id: `${continent}_${i}`,
+          altitude: this.config.altitude,
         });
       }
     });
 
     console.log(
-      `🎯 ${points.length} points aléatoires générés sur ${
+      `🎯 ${particles.length} particules aléatoires générées sur ${
         Object.keys(CONTINENT_BOUNDS).length
       } continents`
     );
-    return points;
+    return particles;
   }
 
   randomBetween(min, max) {
@@ -243,7 +240,7 @@ class TriangularGridGenerator {
 }
 
 // Globe setup function
-function createGlobe(gridData, ringsData) {
+function createGlobe(gridData, particlesData) {
   return (
     Globe()(document.getElementById("globeViz"))
       .globeImageUrl("./img/earth-light.jpg")
@@ -252,26 +249,31 @@ function createGlobe(gridData, ringsData) {
       .atmosphereAltitude(VISUAL_CONFIG.atmosphereAltitude)
       .width(window.innerWidth)
       .height(window.innerHeight)
+
+      // Points de la grille (utilise la couche Points Layer)
       .pointsData(gridData.points)
       .pointColor(() => VISUAL_CONFIG.pointColor)
       .pointRadius(VISUAL_CONFIG.pointRadius)
       .pointAltitude(0)
-      .pointResolution(24)
+      .pointResolution(12)
+
+      // Arcs de la grille
       .arcsData(gridData.arcs)
       .arcColor(() => VISUAL_CONFIG.pointColor)
       .arcAltitude((d) => d.altitude)
       .arcStroke(VISUAL_CONFIG.arcStroke)
       .arcDashLength(VISUAL_CONFIG.arcDashLength)
       .arcDashGap(VISUAL_CONFIG.arcDashGap)
-      // Configuration native des anneaux pulsants
-      .ringsData(ringsData)
-      .ringLat("lat")
-      .ringLng("lng")
-      .ringColor(() => colorInterpolator)
-      .ringMaxRadius(RINGS_CONFIG.maxRadius)
-      .ringPropagationSpeed(RINGS_CONFIG.propagationSpeed)
-      .ringRepeatPeriod(RINGS_CONFIG.repeatPeriod)
-      .ringAltitude(RINGS_CONFIG.altitude)
+
+      // Particules (utilise la couche Particles Layer pour les performances)
+      .particlesData([particlesData]) // Enveloppe dans un array car particlesData attend un array de sets
+      .particlesList((d) => d) // Retourne directement les particules
+      .particleLat("lat")
+      .particleLng("lng")
+      .particleAltitude("altitude")
+      .particlesSize(PARTICLES_CONFIG.size)
+      .particlesSizeAttenuation(true)
+      .particlesColor(() => PARTICLES_CONFIG.color)
   );
 }
 
@@ -279,9 +281,9 @@ function createGlobe(gridData, ringsData) {
 const gridGenerator = new TriangularGridGenerator();
 const gridData = gridGenerator.generate();
 
-// Générer les points pulsants
-const pointsGenerator = new RandomPointsGenerator();
-const randomPoints = pointsGenerator.generate();
+// Générer les particules
+const particlesGenerator = new RandomParticlesGenerator();
+const particles = particlesGenerator.generate();
 
-// Créer le globe avec grille et anneaux
-const world = createGlobe(gridData, randomPoints);
+// Créer le globe avec grille et particules
+const world = createGlobe(gridData, particles);
